@@ -23,7 +23,14 @@
         <form id="scf-form" class="control-grid">
           <label>
             Preset system
-            <select id="preset"></select>
+            <select id="preset">
+              <option value="H" data-atomic-number="1" data-electrons="1">H (Z=1, N=1)</option>
+              <option value="He+" data-atomic-number="2" data-electrons="1">He+ (Z=2, N=1)</option>
+              <option value="He" data-atomic-number="2" data-electrons="2">He (Z=2, N=2)</option>
+              <option value="Li" data-atomic-number="3" data-electrons="3">Li (Z=3, N=3)</option>
+              <option value="Be" data-atomic-number="4" data-electrons="4">Be (Z=4, N=4)</option>
+              <option value="Ne" data-atomic-number="10" data-electrons="10">Ne (Z=10, N=10)</option>
+            </select>
           </label>
 
           <label>
@@ -57,8 +64,19 @@
           </label>
 
           <label>
-            Tolerance
-            <input id="density-tolerance" type="number" min="1e-10" step="1e-7" value="0.000001" />
+            Density tolerance
+            <input
+              id="density-tolerance"
+              type="text"
+              inputmode="decimal"
+              value="1e-6"
+              placeholder="e.g. 1e-6 or 0.001"
+              required
+            />
+            <span class="field-hint">
+              SCF stops when the density change is below this value.
+              Typical values: 1e-4 (faster), 1e-6 (default), 1e-8 (stricter/slower).
+            </span>
           </label>
 
           <label>
@@ -92,7 +110,13 @@
         </div>
 
         <div class="plot-card">
-          <h3>Radial Density Profile</h3>
+          <div class="plot-header">
+            <h3>Radial Density Profile</h3>
+            <label class="plot-toggle">
+              <input id="log-density-scale" type="checkbox" checked />
+              Log y-scale
+            </label>
+          </div>
           <canvas id="density-plot" width="900" height="280"></canvas>
         </div>
 

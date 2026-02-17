@@ -8,6 +8,16 @@ const statusEl = document.getElementById("status-pill");
 const summaryEl = document.getElementById("summary");
 const rawJsonEl = document.getElementById("raw-json");
 const orbitalBodyEl = document.querySelector("#orbital-table tbody");
+const logScaleEl = document.getElementById("log-density-scale");
+const FALLBACK_PRESETS = [
+  { symbol: "H", atomic_number: 1, electrons: 1 },
+  { symbol: "He+", atomic_number: 2, electrons: 1 },
+  { symbol: "He", atomic_number: 2, electrons: 2 },
+  { symbol: "Li", atomic_number: 3, electrons: 3 },
+  { symbol: "Be", atomic_number: 4, electrons: 4 },
+  { symbol: "Ne", atomic_number: 10, electrons: 10 },
+];
+let latestResult = null;
 
 function setStatus(kind, text) {
   statusEl.className = `status ${kind}`;
@@ -18,6 +28,15 @@ function numberValue(id) {
   return Number(document.getElementById(id).value);
 }
 
+function positiveNumberValue(id, fieldLabel) {
+  const raw = document.getElementById(id).value.trim().replace(",", ".");
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    throw new Error(`${fieldLabel} must be a positive number (for example: 1e-6 or 0.001).`);
+  }
+  return parsed;
+}
+
 function boolValue(id) {
   return Boolean(document.getElementById(id).checked);
 }
@@ -26,10 +45,80 @@ function formatFloat(value, digits = 6) {
   return Number(value).toFixed(digits);
 }
 
+function formatAxisNumber(value) {
+  const absValue = Math.abs(value);
+  if (absValue >= 100) {
+    return value.toFixed(0);
+  }
+  if (absValue >= 10) {
+    return value.toFixed(1);
+  }
+  if (absValue >= 1) {
+    return value.toFixed(2);
+  }
+  if (absValue >= 0.1) {
+    return value.toFixed(3);
+  }
+  return value.toExponential(1);
+}
+
+function formatScientific(value) {
+  if (!Number.isFinite(value) || value <= 0) {
+    return "0";
+  }
+  const exponent = Math.floor(Math.log10(value));
+  const mantissa = value / 10 ** exponent;
+  const roundedMantissa = Math.round(mantissa * 10) / 10;
+
+  if (Math.abs(roundedMantissa - 1) < 1e-9) {
+    return `1e${exponent}`;
+  }
+  return `${roundedMantissa}e${exponent}`;
+}
+
+function addUniqueTick(ticks, value) {
+  const exists = ticks.some((tick) => Math.abs(tick - value) < 1e-9);
+  if (!exists) {
+    ticks.push(value);
+  }
+}
+
+function buildLogTickValues(yMin, yMax, maxTicks = 7) {
+  const ticks = [];
+  const expStart = Math.ceil(yMin);
+  const expEnd = Math.floor(yMax);
+
+  for (let exponent = expStart; exponent <= expEnd; exponent += 1) {
+    ticks.push(exponent);
+  }
+
+  if (ticks.length > maxTicks) {
+    const step = Math.ceil(ticks.length / maxTicks);
+    const reduced = ticks.filter((_, index) => index % step === 0);
+    if (reduced[reduced.length - 1] !== ticks[ticks.length - 1]) {
+      reduced.push(ticks[ticks.length - 1]);
+    }
+    ticks.length = 0;
+    ticks.push(...reduced);
+  }
+
+  if (ticks.length === 0) {
+    ticks.push(yMin, yMax);
+  } else {
+    addUniqueTick(ticks, yMin);
+    addUniqueTick(ticks, yMax);
+  }
+
+  return ticks.sort((a, b) => a - b);
+}
+
 async function callBridge(method, payload = null) {
   await ensureBridgeReady();
   const pywebviewApi = window.pywebview && window.pywebview.api;
   if (pywebviewApi && typeof pywebviewApi[method] === "function") {
+    if (payload === null || payload === undefined) {
+      return pywebviewApi[method]();
+    }
     return pywebviewApi[method](payload);
   }
 
@@ -72,7 +161,18 @@ async function ensureBridgeReady() {
 }
 
 async function loadPresets() {
-  const presets = await callBridge("get_presets");
+  let presets = [];
+  try {
+    presets = await callBridge("get_presets");
+  } catch (error) {
+    console.warn("Falling back to built-in presets:", error);
+    presets = FALLBACK_PRESETS;
+  }
+
+  if (!Array.isArray(presets) || presets.length === 0) {
+    presets = FALLBACK_PRESETS;
+  }
+
   presetEl.innerHTML = "";
 
   for (const preset of presets) {
@@ -144,7 +244,7 @@ function drawDensityPlot(result) {
   const height = canvas.height;
   ctx.clearRect(0, 0, width, height);
 
-  const margin = { left: 48, right: 18, top: 18, bottom: 30 };
+  const margin = { left: 64, right: 20, top: 18, bottom: 44 };
   const plotWidth = width - margin.left - margin.right;
   const plotHeight = height - margin.top - margin.bottom;
 
@@ -155,46 +255,144 @@ function drawDensityPlot(result) {
     return;
   }
 
+  const useLogScale = !logScaleEl || logScaleEl.checked;
   const xMin = x[0];
   const xMax = x[x.length - 1];
-  const yMax = Math.max(...y) || 1;
 
-  const px = (value) => margin.left + ((value - xMin) / (xMax - xMin)) * plotWidth;
-  const py = (value) => margin.top + (1 - value / yMax) * plotHeight;
+  let yValues;
+  let yMin;
+  let yMax;
+  let yAxisLabel;
 
-  ctx.strokeStyle = "rgba(31, 47, 43, 0.45)";
+  if (useLogScale) {
+    const positive = y.filter((value) => value > 0);
+    if (positive.length === 0) {
+      return;
+    }
+
+    const yMaxLinear = Math.max(...positive);
+    const yMinPositive = Math.min(...positive);
+    const yFloor = Math.max(yMinPositive * 1e-3, 1e-18);
+
+    yValues = y.map((value) => Math.log10(Math.max(value, yFloor)));
+    yMin = Math.log10(yFloor);
+    yMax = Math.log10(yMaxLinear);
+    yAxisLabel = "n(r) (log)";
+  } else {
+    yValues = y;
+    yMin = 0;
+    yMax = Math.max(...y) || 1;
+    yAxisLabel = "n(r)";
+  }
+
+  if (!Number.isFinite(yMin) || !Number.isFinite(yMax) || yMax <= yMin) {
+    yMax = yMin + 1;
+  }
+
+  const xSpan = xMax - xMin || 1;
+  const ySpan = yMax - yMin || 1;
+  const px = (value) => margin.left + ((value - xMin) / xSpan) * plotWidth;
+  const py = (value) => margin.top + (1 - (value - yMin) / ySpan) * plotHeight;
+
+  const xTickCount = 7;
+  const xTicks = [];
+  for (let idx = 0; idx < xTickCount; idx += 1) {
+    xTicks.push(xMin + (idx / (xTickCount - 1)) * xSpan);
+  }
+  const yTicks = useLogScale
+    ? buildLogTickValues(yMin, yMax, 7)
+    : Array.from({ length: 6 }, (_, idx) => yMin + (idx / 5) * ySpan);
+
+  const xAxisY = margin.top + plotHeight;
+  const yAxisX = margin.left;
+
+  // Grid lines
+  ctx.strokeStyle = "rgba(31, 47, 43, 0.14)";
+  ctx.lineWidth = 1;
+  for (const tick of xTicks) {
+    const xPos = px(tick);
+    ctx.beginPath();
+    ctx.moveTo(xPos, margin.top);
+    ctx.lineTo(xPos, xAxisY);
+    ctx.stroke();
+  }
+  for (const tick of yTicks) {
+    const yPos = py(tick);
+    ctx.beginPath();
+    ctx.moveTo(yAxisX, yPos);
+    ctx.lineTo(yAxisX + plotWidth, yPos);
+    ctx.stroke();
+  }
+
+  // Axes
+  ctx.strokeStyle = "rgba(31, 47, 43, 0.55)";
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(margin.left, margin.top);
-  ctx.lineTo(margin.left, margin.top + plotHeight);
-  ctx.lineTo(margin.left + plotWidth, margin.top + plotHeight);
+  ctx.moveTo(yAxisX, margin.top);
+  ctx.lineTo(yAxisX, xAxisY);
+  ctx.lineTo(yAxisX + plotWidth, xAxisY);
   ctx.stroke();
+
+  // Tick marks and tick labels
+  ctx.font = "11px 'IBM Plex Sans', sans-serif";
+  ctx.fillStyle = "rgba(31, 47, 43, 0.85)";
+  ctx.strokeStyle = "rgba(31, 47, 43, 0.55)";
+  ctx.lineWidth = 1;
+
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  for (const tick of xTicks) {
+    const xPos = px(tick);
+    ctx.beginPath();
+    ctx.moveTo(xPos, xAxisY);
+    ctx.lineTo(xPos, xAxisY + 4);
+    ctx.stroke();
+    const label = formatAxisNumber(tick);
+    ctx.fillText(label, xPos, xAxisY + 7);
+  }
+
+  ctx.textAlign = "right";
+  ctx.textBaseline = "middle";
+  for (const tick of yTicks) {
+    const yPos = py(tick);
+    ctx.beginPath();
+    ctx.moveTo(yAxisX - 4, yPos);
+    ctx.lineTo(yAxisX, yPos);
+    ctx.stroke();
+    const label = useLogScale ? formatScientific(10 ** tick) : formatAxisNumber(tick);
+    ctx.fillText(label, yAxisX - 8, yPos);
+  }
 
   ctx.strokeStyle = "#006e7f";
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(px(x[0]), py(y[0]));
+  ctx.moveTo(px(x[0]), py(yValues[0]));
 
   const stride = Math.max(1, Math.floor(x.length / 500));
   for (let i = stride; i < x.length; i += stride) {
-    ctx.lineTo(px(x[i]), py(y[i]));
+    ctx.lineTo(px(x[i]), py(yValues[i]));
   }
-  ctx.lineTo(px(x[x.length - 1]), py(y[y.length - 1]));
+  ctx.lineTo(px(x[x.length - 1]), py(yValues[yValues.length - 1]));
   ctx.stroke();
 
+  const baseline = useLogScale ? yMin : 0;
   ctx.fillStyle = "rgba(0, 110, 127, 0.08)";
-  ctx.lineTo(px(x[x.length - 1]), margin.top + plotHeight);
-  ctx.lineTo(px(x[0]), margin.top + plotHeight);
+  ctx.lineTo(px(x[x.length - 1]), py(baseline));
+  ctx.lineTo(px(x[0]), py(baseline));
   ctx.closePath();
   ctx.fill();
 
   ctx.fillStyle = "#1f2f2b";
   ctx.font = "12px 'IBM Plex Sans', sans-serif";
-  ctx.fillText("r (a.u.)", margin.left + plotWidth / 2 - 18, height - 8);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  ctx.fillText("r (a.u.)", margin.left + plotWidth / 2, height - 18);
   ctx.save();
-  ctx.translate(12, margin.top + plotHeight / 2 + 16);
+  ctx.translate(16, margin.top + plotHeight / 2);
   ctx.rotate(-Math.PI / 2);
-  ctx.fillText("n(r)", 0, 0);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  ctx.fillText(yAxisLabel, 0, 0);
   ctx.restore();
 }
 
@@ -212,7 +410,7 @@ async function runCalculation(event) {
       num_points: numberValue("num-points"),
       max_iterations: numberValue("max-iterations"),
       density_mixing: numberValue("density-mixing"),
-      density_tolerance: numberValue("density-tolerance"),
+      density_tolerance: positiveNumberValue("density-tolerance", "Density tolerance"),
       l_max: numberValue("l-max"),
       states_per_l: numberValue("states-per-l"),
       use_hartree: boolValue("use-hartree"),
@@ -224,6 +422,7 @@ async function runCalculation(event) {
   try {
     const data = await callBridge("run_scf", payload);
 
+    latestResult = data;
     renderSummary(data);
     renderOrbitals(data);
     drawDensityPlot(data);
@@ -250,4 +449,11 @@ async function init() {
 }
 
 formEl.addEventListener("submit", runCalculation);
+if (logScaleEl) {
+  logScaleEl.addEventListener("change", () => {
+    if (latestResult) {
+      drawDensityPlot(latestResult);
+    }
+  });
+}
 init();

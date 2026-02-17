@@ -9,6 +9,9 @@ The codebase is split into backend and frontend concerns.
 
 No DFT math is implemented in the frontend.
 
+For a full derivation of the equations implemented in this repository, see:
+- `/Users/bshan/GitHub/pyDFT/docs/theoretical_introduction.md`
+
 ## 2. Directory layout
 
 - `/Users/bshan/GitHub/pyDFT/src/pydft/main.py`: top-level app entrypoint.

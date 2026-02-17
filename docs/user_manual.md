@@ -8,6 +8,9 @@ Current scope:
 - Local Density Approximation (LDA): Dirac exchange + Perdew-Zunger correlation.
 - Self-consistent field (SCF) solver on a finite-difference radial grid.
 
+For full theoretical background and derivations, see:
+- `/Users/bshan/GitHub/pyDFT/docs/theoretical_introduction.md`
+
 ## 2. Install
 
 From the repository root:

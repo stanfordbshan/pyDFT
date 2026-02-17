@@ -17,12 +17,12 @@ from pydft.core.presets import available_presets
 class ThinkBridge:
     """Bridge object registered as `js_api` in pywebview."""
 
-    def health(self) -> dict[str, str]:
+    def health(self, _payload: Any | None = None) -> dict[str, str]:
         """Simple liveness check callable from JavaScript."""
 
         return {"status": "ok"}
 
-    def get_presets(self) -> list[dict[str, Any]]:
+    def get_presets(self, _payload: Any | None = None) -> list[dict[str, Any]]:
         """Return available simple-system presets for the UI dropdown."""
 
         return [asdict(system) for system in available_presets()]

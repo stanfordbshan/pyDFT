@@ -52,3 +52,4 @@ pyDFT/
 ## Docs
 - `/Users/bshan/GitHub/pyDFT/docs/user_manual.md`
 - `/Users/bshan/GitHub/pyDFT/docs/developer_manual.md`
+- `/Users/bshan/GitHub/pyDFT/docs/theoretical_introduction.md`
