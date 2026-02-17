@@ -4,8 +4,10 @@
 
 `pyDFT` is an educational Kohn-Sham DFT implementation for simple atom-like systems.
 Current scope:
-- Spherical atoms (H, He, He+ presets; custom Z/N also supported).
-- Local Density Approximation (LDA): Dirac exchange + Perdew-Zunger correlation.
+- Spherical atoms (H, He+, He, Li, Be, Ne presets; custom Z/N also supported).
+- Local (Spin) Density Approximation:
+  - LDA (spin-unpolarized): Dirac exchange + Perdew-Zunger correlation.
+  - LSDA (spin-polarized): spin-resolved extension of the same exchange/correlation forms.
 - Self-consistent field (SCF) solver on a finite-difference radial grid.
 
 For full theoretical background and derivations, see:
@@ -55,6 +57,16 @@ The frontend talks to Python through the pywebview bridge API (`window.pywebview
 pydft-cli run --symbol He --num-points 1200 --max-iterations 200
 ```
 
+LSDA example (open-shell hydrogen, exchange-only):
+
+```bash
+pydft-cli run \
+  --symbol H \
+  --xc-model LSDA \
+  --spin-polarization 1.0 \
+  --disable-correlation
+```
+
 JSON output:
 
 ```bash
@@ -99,7 +111,9 @@ curl -X POST http://127.0.0.1:8000/api/v1/scf \
     "parameters": {
       "num_points": 1200,
       "max_iterations": 200,
-      "density_mixing": 0.3
+      "density_mixing": 0.3,
+      "xc_model": "LSDA",
+      "spin_polarization": 1.0
     }
   }'
 ```
@@ -124,6 +138,7 @@ Accuracy depends on:
 - `r_max`
 - SCF mixing and tolerance
 - orbital basis span (`l_max`, `states_per_l`)
+- chosen XC model (`LDA` vs `LSDA`) and spin polarization setting (for `LSDA`)
 
 Increase resolution for tighter agreement with reference data.
 

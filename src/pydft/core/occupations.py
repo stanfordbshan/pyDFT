@@ -25,11 +25,19 @@ class OccupiedState:
     occupancy: float
 
 
-def fill_occupations(states: list[RadialState], electrons: int) -> list[OccupiedState]:
+def fill_occupations(
+    states: list[RadialState],
+    electrons: float,
+    spin_channels: int = 2,
+) -> list[OccupiedState]:
     """Fill orbitals by increasing energy with spin/azimuthal degeneracy.
 
-    Capacity per state group with angular momentum l is 2*(2*l+1).
+    Capacity per state group with angular momentum l is
+    `spin_channels * (2*l + 1)`.
     """
+
+    if spin_channels < 1:
+        raise ValueError("spin_channels must be at least 1")
 
     remaining = float(electrons)
     occupied: list[OccupiedState] = []
@@ -37,7 +45,7 @@ def fill_occupations(states: list[RadialState], electrons: int) -> list[Occupied
     for state in sorted(states, key=lambda item: item.energy):
         if remaining <= 0:
             break
-        capacity = float(2 * (2 * state.l + 1))
+        capacity = float(spin_channels * (2 * state.l + 1))
         occ = min(capacity, remaining)
         if occ > 0:
             occupied.append(OccupiedState(state=state, occupancy=occ))

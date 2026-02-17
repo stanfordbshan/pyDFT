@@ -40,3 +40,37 @@ def test_cli_json_output() -> None:
     assert payload["system"]["symbol"] == "H"
     assert "total_energy" in payload
     assert "converged" in payload
+
+
+def test_cli_accepts_lsda_flags() -> None:
+    env = os.environ.copy()
+    env["PYTHONPATH"] = f"{SRC}:{env.get('PYTHONPATH', '')}"
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pydft.core.parser",
+            "run",
+            "--symbol",
+            "H",
+            "--num-points",
+            "350",
+            "--max-iterations",
+            "80",
+            "--xc-model",
+            "LSDA",
+            "--spin-polarization",
+            "1.0",
+            "--json",
+        ],
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+    payload = json.loads(completed.stdout)
+    assert payload["xc_model"] == "LSDA"
+    assert payload["spin_polarization"] > 0

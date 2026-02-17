@@ -11,7 +11,7 @@ The code models atom-like systems with these assumptions:
 1. Non-relativistic electrons.
 2. Fixed nuclei (Born-Oppenheimer approximation).
 3. Spherical symmetry (radial atom model).
-4. Spin-unpolarized local density approximation (LDA).
+4. Local or local-spin density approximation (LDA/LSDA).
 5. Kohn-Sham self-consistent field (SCF) method.
 
 All equations are in atomic units (a.u.):
@@ -152,14 +152,21 @@ $$
 This form is exactly what the implementation computes in
 `src/pydft/core/potentials.py`.
 
-## 6. LDA Exchange-Correlation in This Repo
+## 6. LDA and LSDA Exchange-Correlation in This Repo
 
-The code uses unpolarized LDA:
+The code provides both:
 
-1. Dirac exchange.
-2. Perdew-Zunger 1981 correlation (PZ81).
+1. LDA (spin-unpolarized), implemented in `src/pydft/core/functionals.py`.
+2. LSDA (spin-polarized), implemented in `src/pydft/core/lsda.py`.
 
-### 6.1 Dirac exchange
+Both use:
+
+- Dirac exchange.
+- Perdew-Zunger 1981 (PZ81) correlation.
+
+### 6.1 LDA formulas
+
+For total density $n$:
 
 $$
 \epsilon_x(n) = -\frac{3}{4}\left(\frac{3}{\pi}\right)^{1/3} n^{1/3},
@@ -170,13 +177,13 @@ v_x(n) = \frac{d(n\epsilon_x)}{dn}
 = -\left(\frac{3}{\pi}\right)^{1/3} n^{1/3}.
 $$
 
-### 6.2 PZ81 correlation
-
-Define the Wigner-Seitz radius
+Define
 
 $$
 r_s = \left(\frac{3}{4\pi n}\right)^{1/3}.
 $$
+
+PZ81 correlation is piecewise:
 
 For $r_s<1$:
 
@@ -202,7 +209,7 @@ $$
 \gamma=-0.1423,\; \beta_1=1.0529,\; \beta_2=0.3334.
 $$
 
-Potential is computed from
+The corresponding correlation potential is
 
 $$
 v_c = \epsilon_c - \frac{r_s}{3}\frac{d\epsilon_c}{dr_s}.
@@ -211,21 +218,71 @@ $$
 Then
 
 $$
-\epsilon_{xc}=\epsilon_x+\epsilon_c,
-\qquad
-v_{xc}=v_x+v_c.
+\epsilon_{xc}=\epsilon_x+\epsilon_c,\qquad v_{xc}=v_x+v_c.
 $$
 
-Implementation location:
-`src/pydft/core/functionals.py`.
+### 6.2 LSDA formulas
+
+In LSDA, define spin densities:
+
+$$
+n = n_\uparrow + n_\downarrow,\qquad
+\zeta = \frac{n_\uparrow - n_\downarrow}{n}.
+$$
+
+Spin-resolved Dirac exchange energy density is
+
+$$
+e_x(n_\uparrow,n_\downarrow)
+= -\frac{3}{4}\left(\frac{3}{\pi}\right)^{1/3}2^{1/3}
+\left(n_\uparrow^{4/3}+n_\downarrow^{4/3}\right).
+$$
+
+Thus exchange energy per particle is
+
+$$
+\epsilon_x = \frac{e_x}{n},
+$$
+
+and spin potentials are
+
+$$
+v_{x,\uparrow} = -\left(\frac{6}{\pi}\right)^{1/3}n_\uparrow^{1/3},\qquad
+v_{x,\downarrow} = -\left(\frac{6}{\pi}\right)^{1/3}n_\downarrow^{1/3}.
+$$
+
+PZ81 correlation is evaluated for unpolarized and fully polarized limits, then
+interpolated with
+
+$$
+f(\zeta)=\frac{(1+\zeta)^{4/3}+(1-\zeta)^{4/3}-2}{2^{4/3}-2}.
+$$
+
+The implementation computes:
+
+$$
+\epsilon_c(r_s,\zeta)=\epsilon_c^{(0)}(r_s)+
+\left[\epsilon_c^{(1)}(r_s)-\epsilon_c^{(0)}(r_s)\right]f(\zeta),
+$$
+
+then obtains $v_{c,\uparrow}$ and $v_{c,\downarrow}$ from derivatives with
+respect to $n_\uparrow$ and $n_\downarrow$.
+
+Finally:
+
+$$
+\epsilon_{xc}=\epsilon_x+\epsilon_c,\quad
+v_{xc,\uparrow}=v_{x,\uparrow}+v_{c,\uparrow},\quad
+v_{xc,\downarrow}=v_{x,\downarrow}+v_{c,\downarrow}.
+$$
 
 ## 7. Total Energy Expression Used for Reporting
 
-The code reports
+In LDA mode, the code reports
 
 $$
 E_{\mathrm{tot}} = \sum_i f_i\epsilon_i
-- E_H[n] + E_{xc}[n] - \int n(\mathbf{r})v_{xc}(\mathbf{r})\, d^3r,
+- E_H[n] + E_{xc}[n] - \int n(\mathbf{r})v_{xc}(\mathbf{r})\, d^3r.
 $$
 
 with
@@ -236,6 +293,14 @@ $$
 
 $$
 E_{xc}[n] = \int n(\mathbf{r})\epsilon_{xc}(n(\mathbf{r}))\, d^3r.
+$$
+
+In LSDA mode, the last term becomes spin-resolved:
+
+$$
+E_{\mathrm{tot}}^{\mathrm{LSDA}} = \sum_i f_i\epsilon_i
+- E_H[n] + E_{xc}[n_\uparrow,n_\downarrow]
+- \int \left[n_\uparrow v_{xc,\uparrow} + n_\downarrow v_{xc,\downarrow}\right]d^3r.
 $$
 
 The subtractions remove double counting of interaction terms already contained
@@ -299,10 +364,17 @@ numerically evaluated by trapezoidal quadrature on the radial grid.
 
 Given initial density $n^{(0)}(r)$, for iteration $k$:
 
-1. Build $V_{\mathrm{eff}}[n^{(k)}]$.
+1. Build effective potentials:
+   - LDA: $V_{\mathrm{eff}}[n^{(k)}]$.
+   - LSDA: $V_{\mathrm{eff},\uparrow}[n_\uparrow^{(k)},n_\downarrow^{(k)}]$ and
+     $V_{\mathrm{eff},\downarrow}[n_\uparrow^{(k)},n_\downarrow^{(k)}]$.
 2. Solve radial KS eigenproblems for each $l$.
-3. Fill electrons by ascending $\epsilon_{nl}$ with capacity $2(2l+1)$.
-4. Build output density $\tilde{n}^{(k)}(r)$.
+3. Fill electrons by ascending $\epsilon_{nl}$:
+   - LDA: capacity $2(2l+1)$.
+   - LSDA (per spin channel): capacity $(2l+1)$.
+4. Build output density:
+   - LDA: $\tilde{n}^{(k)}(r)$.
+   - LSDA: $\tilde{n}_\uparrow^{(k)}(r)$ and $\tilde{n}_\downarrow^{(k)}(r)$.
 5. Linear mixing:
 
 $$
@@ -310,6 +382,9 @@ n^{(k+1)} = (1-\alpha)n^{(k)} + \alpha\tilde{n}^{(k)},
 $$
 
 where $\alpha$ is `density_mixing`.
+
+LSDA applies the same mixing formula independently to $n_\uparrow$ and
+$n_\downarrow$.
 
 6. Normalize to electron count:
 
@@ -341,6 +416,9 @@ or maximum iterations reached.
 - `density_tolerance`: SCF stop criterion $\Delta$.
 - `use_hartree`, `use_exchange`, `use_correlation`: switches for terms in
   $V_{\mathrm{eff}}$ and total-energy bookkeeping.
+- `xc_model`: chooses `LDA` or `LSDA`.
+- `spin_polarization`: optional $\zeta=(N_\uparrow-N_\downarrow)/N$ target in
+  LSDA mode.
 
 ## 11. Expected Behavior and Practical Interpretation
 
@@ -348,16 +426,17 @@ or maximum iterations reached.
   the hydrogenic Schrodinger limit.
 - With LDA enabled, total energies are approximate and should be interpreted as
   pedagogical DFT outputs, not production all-electron reference data.
+- For open-shell systems, LSDA can lower total energy relative to LDA by
+  allowing $n_\uparrow \neq n_\downarrow$.
 - Density tails are physically small and can require log-scale plotting to be
   visually informative.
 
 ## 12. Known Limitations of the Present Model
 
 1. Spherical symmetry only (no molecules, no angularly resolved geometry).
-2. Spin-unpolarized only (no spin polarization).
-3. LDA only (no GGA/hybrid/meta-GGA).
-4. No relativistic corrections.
-5. Finite-domain and finite-grid discretization errors.
+2. Exchange-correlation restricted to LDA/LSDA (no GGA/hybrid/meta-GGA).
+3. No relativistic corrections.
+4. Finite-domain and finite-grid discretization errors.
 
 These simplifications are intentional for educational clarity.
 

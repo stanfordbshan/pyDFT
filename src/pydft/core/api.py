@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
+from typing import Literal
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -26,6 +27,9 @@ class SCFParametersPayload(BaseModel):
     use_hartree: bool = True
     use_exchange: bool = True
     use_correlation: bool = True
+    xc_model: Literal["LDA", "LSDA"] = "LDA"
+    spin_polarization: float | None = Field(default=None, ge=-1, le=1)
+
 
 class SCFRequest(BaseModel):
     """JSON payload schema for one SCF calculation request."""
@@ -38,7 +42,7 @@ class SCFRequest(BaseModel):
 
 app = FastAPI(
     title="pyDFT backend API",
-    description="Educational Kohn-Sham LDA backend",
+    description="Educational Kohn-Sham LDA/LSDA backend",
     version="0.1.0",
 )
 

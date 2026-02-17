@@ -37,6 +37,8 @@ class SCFParameters:
     use_hartree: bool = True
     use_exchange: bool = True
     use_correlation: bool = True
+    xc_model: str = "LDA"
+    spin_polarization: float | None = None
 
 
 @dataclass(slots=True)
@@ -47,6 +49,7 @@ class OrbitalResult:
     l: int
     occupancy: float
     energy: float
+    spin: str = "paired"
 
 
 @dataclass(slots=True)
@@ -67,6 +70,14 @@ class SCFResult:
     radial_grid: list[float] = field(default_factory=list)
     density: list[float] = field(default_factory=list)
     effective_potential: list[float] = field(default_factory=list)
+    density_up: list[float] = field(default_factory=list)
+    density_down: list[float] = field(default_factory=list)
+    effective_potential_up: list[float] = field(default_factory=list)
+    effective_potential_down: list[float] = field(default_factory=list)
+    xc_model: str = "LDA"
+    spin_up_electrons: float = 0.0
+    spin_down_electrons: float = 0.0
+    spin_polarization: float = 0.0
     notes: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:

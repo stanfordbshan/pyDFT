@@ -5,7 +5,7 @@ Educational density functional theory (DFT) code for simple atomic systems.
 Developed by **Prof. Bin Shan** ([bshan@mail.hust.edu.cn](mailto:bshan@mail.hust.edu.cn)).
 
 ## Key features
-- `pydft.core`: Kohn-Sham LDA SCF solver (backend physics/math).
+- `pydft.core`: Kohn-Sham LDA/LSDA SCF solver (backend physics/math).
 - `pydft.gui`: pywebview desktop frontend logic.
 - `pydft.gui.assets`: HTML/CSS/JS assets used by the GUI.
 - Standalone CLI mode (`pydft-cli`).
@@ -31,6 +31,7 @@ pyDFT/
 │       │   ├── models.py
 │       │   ├── grid.py
 │       │   ├── functionals.py
+│       │   ├── lsda.py
 │       │   ├── potentials.py
 │       │   ├── radial_solver.py
 │       │   ├── occupations.py

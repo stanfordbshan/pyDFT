@@ -31,6 +31,18 @@ def parse_request_payload(payload: Mapping[str, Any]) -> tuple[AtomicSystem, SCF
     if not isinstance(params_data, Mapping):
         raise ValueError("'parameters' must be an object")
 
+    xc_model = str(params_data.get("xc_model", "LDA")).strip().upper()
+    if xc_model not in {"LDA", "LSDA"}:
+        raise ValueError("parameters.xc_model must be either 'LDA' or 'LSDA'")
+
+    spin_polarization = _optional_float(params_data.get("spin_polarization"))
+    if spin_polarization is not None and (spin_polarization < -1.0 or spin_polarization > 1.0):
+        raise ValueError("parameters.spin_polarization must be between -1 and 1")
+
+    if xc_model == "LDA":
+        # LDA is spin-unpolarized, so zeta is ignored even if provided.
+        spin_polarization = None
+
     system = build_system(symbol=symbol, atomic_number=atomic_number, electrons=electrons)
     params = SCFParameters(
         r_max=float(params_data.get("r_max", 20.0)),
@@ -43,6 +55,8 @@ def parse_request_payload(payload: Mapping[str, Any]) -> tuple[AtomicSystem, SCF
         use_hartree=bool(params_data.get("use_hartree", True)),
         use_exchange=bool(params_data.get("use_exchange", True)),
         use_correlation=bool(params_data.get("use_correlation", True)),
+        xc_model=xc_model,
+        spin_polarization=spin_polarization,
     )
 
     return system, params
@@ -56,10 +70,20 @@ def _optional_int(value: Any) -> int | None:
     return int(value)
 
 
+def _optional_float(value: Any) -> float | None:
+    """Return float value or None, preserving None/blank inputs."""
+
+    if value is None:
+        return None
+    if isinstance(value, str) and value.strip() == "":
+        return None
+    return float(value)
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Create the top-level CLI parser with subcommands."""
 
-    parser = argparse.ArgumentParser(description="Educational LDA Kohn-Sham solver")
+    parser = argparse.ArgumentParser(description="Educational LDA/LSDA Kohn-Sham solver")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     run_cmd = subparsers.add_parser("run", help="Run one SCF calculation")
@@ -76,6 +100,18 @@ def build_parser() -> argparse.ArgumentParser:
     run_cmd.add_argument("--disable-hartree", action="store_true", help="Disable Hartree term")
     run_cmd.add_argument("--disable-exchange", action="store_true", help="Disable exchange term")
     run_cmd.add_argument("--disable-correlation", action="store_true", help="Disable correlation term")
+    run_cmd.add_argument(
+        "--xc-model",
+        choices=["LDA", "LSDA"],
+        default="LDA",
+        help="Exchange-correlation model",
+    )
+    run_cmd.add_argument(
+        "--spin-polarization",
+        type=float,
+        default=None,
+        help="Spin polarization zeta=(N_up-N_down)/N, only used by LSDA",
+    )
     run_cmd.add_argument("--json", action="store_true", help="Print result as raw JSON")
     run_cmd.add_argument("--output", type=Path, default=None, help="Optional JSON output path")
 
@@ -102,6 +138,8 @@ def _run_calculation(args: argparse.Namespace) -> int:
             "use_hartree": not args.disable_hartree,
             "use_exchange": not args.disable_exchange,
             "use_correlation": not args.disable_correlation,
+            "xc_model": args.xc_model,
+            "spin_polarization": args.spin_polarization,
         },
     }
     system, params = parse_request_payload(payload)
@@ -116,13 +154,21 @@ def _run_calculation(args: argparse.Namespace) -> int:
         print(json.dumps(result_payload, indent=2))
     else:
         print(f"System: {result.system.symbol} (Z={result.system.atomic_number}, N={result.system.electrons})")
+        print(f"XC model: {result.xc_model}")
+        if result.xc_model.upper() == "LSDA":
+            print(
+                "Spin channels: "
+                f"N_up={result.spin_up_electrons:.3f}, "
+                f"N_down={result.spin_down_electrons:.3f}, "
+                f"zeta={result.spin_polarization:.3f}"
+            )
         print(f"Converged: {result.converged} in {result.iterations} iterations")
         print(f"Total energy (Ha): {result.total_energy:.8f}")
         print(f"Density residual: {result.density_residual:.3e}")
         print("Occupied orbital energies (Ha):")
         for orbital in result.orbitals:
             print(
-                f"  n={orbital.n_index}, l={orbital.l}, occ={orbital.occupancy:.1f}, "
+                f"  n={orbital.n_index}, l={orbital.l}, spin={orbital.spin}, occ={orbital.occupancy:.1f}, "
                 f"eps={orbital.energy:.8f}"
             )
 

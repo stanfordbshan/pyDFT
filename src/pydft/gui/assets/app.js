@@ -9,6 +9,8 @@ const summaryEl = document.getElementById("summary");
 const rawJsonEl = document.getElementById("raw-json");
 const orbitalBodyEl = document.querySelector("#orbital-table tbody");
 const logScaleEl = document.getElementById("log-density-scale");
+const xcModelEl = document.getElementById("xc-model");
+const spinPolarizationEl = document.getElementById("spin-polarization");
 const FALLBACK_PRESETS = [
   { symbol: "H", atomic_number: 1, electrons: 1 },
   { symbol: "He+", atomic_number: 2, electrons: 1 },
@@ -39,6 +41,18 @@ function positiveNumberValue(id, fieldLabel) {
 
 function boolValue(id) {
   return Boolean(document.getElementById(id).checked);
+}
+
+function optionalRangeNumberValue(id, fieldLabel, minValue, maxValue) {
+  const raw = document.getElementById(id).value.trim().replace(",", ".");
+  if (raw === "") {
+    return null;
+  }
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed < minValue || parsed > maxValue) {
+    throw new Error(`${fieldLabel} must be between ${minValue} and ${maxValue}.`);
+  }
+  return parsed;
 }
 
 function formatFloat(value, digits = 6) {
@@ -197,6 +211,18 @@ async function loadPresets() {
 }
 
 function renderSummary(result) {
+  const xcModel = String(result.xc_model || result.parameters?.xc_model || "LDA").toUpperCase();
+  const isLsda = xcModel === "LSDA";
+  const spinUp = Number(result.spin_up_electrons ?? 0);
+  const spinDown = Number(result.spin_down_electrons ?? 0);
+  const zeta = Number(result.spin_polarization ?? 0);
+  const spinSummary = isLsda
+    ? `N_up=${formatFloat(spinUp, 3)}, N_down=${formatFloat(spinDown, 3)}, zeta=${formatFloat(zeta, 3)}`
+    : "Paired-spin mode (n_up = n_down)";
+  const influenceHint = isLsda
+    ? "LSDA can lower total energy for open-shell systems by allowing spin asymmetry."
+    : "LDA enforces paired spins; open-shell systems are often better described by LSDA.";
+
   summaryEl.innerHTML = `
     <div class="summary-grid">
       <div class="metric">
@@ -216,24 +242,59 @@ function renderSummary(result) {
         <div class="value">${formatFloat(result.total_energy, 8)}</div>
       </div>
       <div class="metric">
+        <div class="label">XC Model</div>
+        <div class="value">${xcModel}</div>
+      </div>
+      <div class="metric">
+        <div class="label">Spin Channels</div>
+        <div class="value">${spinSummary}</div>
+      </div>
+      <div class="metric">
+        <div class="label">Hartree Energy (Ha)</div>
+        <div class="value">${formatFloat(result.hartree_energy, 8)}</div>
+      </div>
+      <div class="metric">
+        <div class="label">XC Energy (Ha)</div>
+        <div class="value">${formatFloat(result.xc_energy, 8)}</div>
+      </div>
+      <div class="metric">
         <div class="label">Density Residual</div>
         <div class="value">${Number(result.density_residual).toExponential(3)}</div>
       </div>
     </div>
+    <p class="summary-note">${influenceHint}</p>
   `;
 }
 
 function renderOrbitals(result) {
+  const orbitals = Array.isArray(result.orbitals) ? [...result.orbitals] : [];
+  orbitals.sort((left, right) => Number(left.energy) - Number(right.energy));
   orbitalBodyEl.innerHTML = "";
-  for (const orbital of result.orbitals) {
+  for (const orbital of orbitals) {
     const row = document.createElement("tr");
     row.innerHTML = `
       <td>${orbital.n_index}</td>
       <td>${orbital.l}</td>
+      <td>${orbital.spin || "paired"}</td>
       <td>${formatFloat(orbital.occupancy, 1)}</td>
       <td>${formatFloat(orbital.energy, 8)}</td>
     `;
     orbitalBodyEl.appendChild(row);
+  }
+}
+
+function updateSpinControlState() {
+  if (!xcModelEl || !spinPolarizationEl) {
+    return;
+  }
+
+  const isLsda = xcModelEl.value.toUpperCase() === "LSDA";
+  spinPolarizationEl.disabled = !isLsda;
+  if (!isLsda) {
+    spinPolarizationEl.value = "";
+    spinPolarizationEl.placeholder = "Disabled in LDA mode";
+  } else {
+    spinPolarizationEl.placeholder = "Optional, LSDA only (e.g. 0.333)";
   }
 }
 
@@ -401,6 +462,12 @@ async function runCalculation(event) {
   runButtonEl.disabled = true;
   setStatus("running", "Running");
 
+  const xcModel = (xcModelEl && xcModelEl.value ? xcModelEl.value : "LDA").toUpperCase();
+  const spinPolarization =
+    xcModel === "LSDA"
+      ? optionalRangeNumberValue("spin-polarization", "Spin polarization", -1, 1)
+      : null;
+
   const payload = {
     symbol: presetEl.value,
     atomic_number: numberValue("atomic-number"),
@@ -416,6 +483,8 @@ async function runCalculation(event) {
       use_hartree: boolValue("use-hartree"),
       use_exchange: boolValue("use-exchange"),
       use_correlation: boolValue("use-correlation"),
+      xc_model: xcModel,
+      spin_polarization: spinPolarization,
     },
   };
 
@@ -441,6 +510,7 @@ async function init() {
     setStatus("running", "Connecting");
     await ensureBridgeReady();
     await loadPresets();
+    updateSpinControlState();
     setStatus("idle", "Idle");
   } catch (error) {
     setStatus("error", "Unavailable");
@@ -449,6 +519,9 @@ async function init() {
 }
 
 formEl.addEventListener("submit", runCalculation);
+if (xcModelEl) {
+  xcModelEl.addEventListener("change", updateSpinControlState);
+}
 if (logScaleEl) {
   logScaleEl.addEventListener("change", () => {
     if (latestResult) {

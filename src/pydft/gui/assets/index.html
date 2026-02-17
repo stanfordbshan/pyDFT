@@ -16,7 +16,7 @@
           <p class="kicker">Educational DFT</p>
           <h1>pyDFT Workbench</h1>
           <p class="lede">
-            Solve simple atomic Kohn-Sham LDA systems and inspect energies, orbitals, and density profiles.
+            Solve simple atomic Kohn-Sham LDA/LSDA systems and inspect energies, orbitals, and density profiles.
           </p>
         </header>
 
@@ -89,6 +89,33 @@
             <input id="states-per-l" type="number" min="1" max="10" step="1" value="4" />
           </label>
 
+          <label>
+            XC model
+            <select id="xc-model">
+              <option value="LDA">LDA (spin-unpolarized)</option>
+              <option value="LSDA">LSDA (spin-polarized)</option>
+            </select>
+            <span class="field-hint">
+              LDA enforces paired spins. LSDA allows different spin-up/down densities, which can lower total
+              energy for open-shell atoms.
+            </span>
+          </label>
+
+          <label>
+            Spin polarization zeta
+            <input
+              id="spin-polarization"
+              type="number"
+              min="-1"
+              max="1"
+              step="0.1"
+              placeholder="Optional, LSDA only (e.g. 0.333)"
+            />
+            <span class="field-hint">
+              Definition: zeta = (N_up - N_down) / N. Leave blank to use automatic spin split in LSDA mode.
+            </span>
+          </label>
+
           <div class="toggle-row">
             <label><input id="use-hartree" type="checkbox" checked /> Hartree</label>
             <label><input id="use-exchange" type="checkbox" checked /> Exchange</label>
@@ -127,6 +154,7 @@
               <tr>
                 <th>n</th>
                 <th>l</th>
+                <th>Spin</th>
                 <th>Occ</th>
                 <th>Energy (Ha)</th>
               </tr>

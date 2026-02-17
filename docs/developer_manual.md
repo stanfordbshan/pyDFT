@@ -20,6 +20,7 @@ For a full derivation of the equations implemented in this repository, see:
 - `src/pydft/core/models.py`: shared dataclasses.
 - `src/pydft/core/grid.py`: radial grid + spherical integration helpers.
 - `src/pydft/core/functionals.py`: LDA XC formulas.
+- `src/pydft/core/lsda.py`: LSDA spin-resolved XC formulas and spin splitting helpers.
 - `src/pydft/core/potentials.py`: external and Hartree potentials.
 - `src/pydft/core/radial_solver.py`: finite-difference radial eigenproblem.
 - `src/pydft/core/occupations.py`: occupancy filling and degeneracy handling.
@@ -59,9 +60,10 @@ $$
 q(r)=4\pi r^2 n(r),\qquad Q(r)=\int_0^r q(r')dr'.
 $$
 
-- XC: LDA unpolarized
-  - Exchange: Dirac form.
-  - Correlation: Perdew-Zunger 1981 parameterization.
+- XC:
+  - LDA: unpolarized Dirac exchange + PZ81 correlation.
+  - LSDA: spin-resolved extension with $n_\uparrow$, $n_\downarrow$ and
+    $\zeta=(n_\uparrow-n_\downarrow)/(n_\uparrow+n_\downarrow)$.
 
 ### 3.3 Energy expression
 
@@ -79,8 +81,12 @@ $$
 
 - Start from a hydrogenic density guess.
 - Build $V_{\mathrm{eff}}$ from current density.
+- In LSDA mode, build separate $V_{\mathrm{eff},\uparrow}$ and
+  $V_{\mathrm{eff},\downarrow}$ from spin densities.
 - Solve radial KS equations for each $l$ channel.
-- Fill electrons by ascending eigenvalue with $2(2l+1)$ degeneracy.
+- Fill electrons by ascending eigenvalue:
+  - LDA: $2(2l+1)$ capacity per radial state.
+  - LSDA per spin channel: $(2l+1)$ capacity.
 - Build new density from occupied orbitals.
 - Apply linear density mixing.
 - Stop on max-density-difference tolerance.

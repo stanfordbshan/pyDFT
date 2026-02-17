@@ -38,7 +38,42 @@ def test_scf_endpoint_runs_helium_case() -> None:
     payload = response.json()
 
     assert payload["system"]["symbol"] == "He"
+    assert payload["xc_model"] == "LDA"
     assert isinstance(payload["converged"], bool)
     assert payload["iterations"] <= 120
     assert len(payload["density"]) == 500
     assert len(payload["effective_potential"]) == 500
+
+
+def test_scf_endpoint_runs_lsda_case() -> None:
+    response = client.post(
+        "/api/v1/scf",
+        json={
+            "symbol": "H",
+            "parameters": {
+                "r_max": 20.0,
+                "num_points": 500,
+                "max_iterations": 120,
+                "density_mixing": 0.35,
+                "density_tolerance": 1e-5,
+                "l_max": 1,
+                "states_per_l": 4,
+                "use_hartree": True,
+                "use_exchange": True,
+                "use_correlation": False,
+                "xc_model": "LSDA",
+                "spin_polarization": 1.0,
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+
+    assert payload["system"]["symbol"] == "H"
+    assert payload["xc_model"] == "LSDA"
+    assert len(payload["density_up"]) == 500
+    assert len(payload["density_down"]) == 500
+    assert len(payload["effective_potential_up"]) == 500
+    assert len(payload["effective_potential_down"]) == 500
+    assert payload["spin_up_electrons"] > payload["spin_down_electrons"]
