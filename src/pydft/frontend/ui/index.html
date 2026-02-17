@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>pyDFT Educational Workbench</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="background-orb"></div>
+    <div class="background-grid"></div>
+
+    <main class="layout">
+      <section class="panel controls-panel">
+        <header>
+          <p class="kicker">Educational DFT</p>
+          <h1>pyDFT Workbench</h1>
+          <p class="lede">
+            Solve simple atomic Kohn-Sham LDA systems and inspect energies, orbitals, and density profiles.
+          </p>
+        </header>
+
+        <form id="scf-form" class="control-grid">
+          <label>
+            Preset system
+            <select id="preset"></select>
+          </label>
+
+          <label>
+            Atomic number (Z)
+            <input id="atomic-number" type="number" min="1" step="1" required />
+          </label>
+
+          <label>
+            Electrons
+            <input id="electrons" type="number" min="1" step="1" required />
+          </label>
+
+          <label>
+            r max (a.u.)
+            <input id="r-max" type="number" min="1" step="0.5" value="20" />
+          </label>
+
+          <label>
+            Grid points
+            <input id="num-points" type="number" min="100" step="50" value="1200" />
+          </label>
+
+          <label>
+            Max SCF iterations
+            <input id="max-iterations" type="number" min="1" step="1" value="200" />
+          </label>
+
+          <label>
+            Mixing
+            <input id="density-mixing" type="number" min="0.05" max="1" step="0.05" value="0.3" />
+          </label>
+
+          <label>
+            Tolerance
+            <input id="density-tolerance" type="number" min="1e-10" step="1e-7" value="0.000001" />
+          </label>
+
+          <label>
+            l max
+            <input id="l-max" type="number" min="0" max="3" step="1" value="1" />
+          </label>
+
+          <label>
+            States per l
+            <input id="states-per-l" type="number" min="1" max="10" step="1" value="4" />
+          </label>
+
+          <div class="toggle-row">
+            <label><input id="use-hartree" type="checkbox" checked /> Hartree</label>
+            <label><input id="use-exchange" type="checkbox" checked /> Exchange</label>
+            <label><input id="use-correlation" type="checkbox" checked /> Correlation</label>
+          </div>
+
+          <button id="run-button" type="submit">Run SCF</button>
+        </form>
+      </section>
+
+      <section class="panel results-panel">
+        <div class="status-row">
+          <h2>Results</h2>
+          <span id="status-pill" class="status idle">Idle</span>
+        </div>
+
+        <div id="summary" class="summary-card">
+          <p>No run yet.</p>
+        </div>
+
+        <div class="plot-card">
+          <h3>Radial Density Profile</h3>
+          <canvas id="density-plot" width="900" height="280"></canvas>
+        </div>
+
+        <div class="orbital-card">
+          <h3>Occupied Orbitals</h3>
+          <table id="orbital-table">
+            <thead>
+              <tr>
+                <th>n</th>
+                <th>l</th>
+                <th>Occ</th>
+                <th>Energy (Ha)</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <details>
+          <summary>Raw JSON result</summary>
+          <pre id="raw-json"></pre>
+        </details>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
