@@ -22,7 +22,7 @@ def main() -> int:
             "pywebview is not installed. Install frontend extras: pip install '.[frontend]'"
         ) from exc
 
-    ui_path = Path(__file__).resolve().parents[1] / "assets" / "index.html"
+    ui_path = Path(__file__).resolve().parent / "assets" / "index.html"
 
     webview.create_window(
         title="pyDFT Educational Workbench",

@@ -37,7 +37,7 @@ include-package-data = true
 where = ["src"]
 
 [tool.setuptools.package-data]
-"pydft" = ["assets/*.html", "assets/*.css", "assets/*.js"]
+"pydft.gui" = ["assets/*.html", "assets/*.css", "assets/*.js"]
 
 [tool.pytest.ini_options]
 minversion = "8.0"

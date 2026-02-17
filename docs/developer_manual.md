@@ -5,7 +5,7 @@
 The codebase is split into backend and frontend concerns.
 
 - Backend (`pydft.core`): physics, numerics, standalone CLI, optional HTTP API.
-- Frontend (`pydft.gui` + `pydft.assets`): pywebview window + JavaScript UI.
+- Frontend (`pydft.gui` + `pydft.gui.assets`): pywebview window + JavaScript UI.
 
 No DFT math is implemented in the frontend.
 
@@ -28,7 +28,7 @@ For a full derivation of the equations implemented in this repository, see:
 - `src/pydft/core/api_server.py`: `pydft-api` runner.
 - `src/pydft/gui/window.py`: `webview.create_window(...)` setup.
 - `src/pydft/gui/api.py`: Python-JS bridge class used by pywebview.
-- `src/pydft/assets/*`: HTML/CSS/JS frontend assets.
+- `src/pydft/gui/assets/*`: HTML/CSS/JS frontend assets.
 - `tests/unit/*`: unit tests.
 - `tests/integration/*`: integration + benchmark tests.
 
