@@ -9,7 +9,7 @@ Current scope:
 - Self-consistent field (SCF) solver on a finite-difference radial grid.
 
 For full theoretical background and derivations, see:
-- `/Users/bshan/GitHub/pyDFT/docs/theoretical_introduction.md`
+- [theoretical_introduction.md](theoretical_introduction.md)
 
 ## 2. Install
 
@@ -126,3 +126,9 @@ Accuracy depends on:
 - orbital basis span (`l_max`, `states_per_l`)
 
 Increase resolution for tighter agreement with reference data.
+
+## 9. License and authorship
+
+This software is developed by **Prof. Bin Shan** ([bshan@mail.hust.edu.cn](mailto:bshan@mail.hust.edu.cn)).
+
+Released under the MIT License. See [../LICENSE](../LICENSE).

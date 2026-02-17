@@ -2,7 +2,7 @@
 
 This document gives the theoretical background for the educational `pyDFT` code.
 It is written to match what the current implementation actually solves in
-`/Users/bshan/GitHub/pyDFT/src/pydft/core`.
+`src/pydft/core`.
 
 ## 1. Scope and Physical Model
 
@@ -16,17 +16,16 @@ The code models atom-like systems with these assumptions:
 
 All equations are in atomic units (a.u.):
 
-- \(\hbar = 1\)
-- \(m_e = 1\)
-- \(|e| = 1\)
-- \(4\pi\epsilon_0 = 1\)
+- $\hbar=1$
+- $m_e=1$
+- $|e|=1$
+- $4\pi\epsilon_0=1$
 
 So energies are in Hartree and distances in Bohr.
 
 ## 2. From Many-Electron Problem to DFT
 
-For an atom with nuclear charge \(Z\) at the origin, the electronic
-Hamiltonian is
+For an atom with nuclear charge $Z$ at the origin, the electronic Hamiltonian is
 
 $$
 \hat{H} = \sum_{i=1}^{N}\left(-\frac{1}{2}\nabla_i^2 - \frac{Z}{r_i}\right)
@@ -34,7 +33,7 @@ $$
 $$
 
 Direct many-body solution is expensive, so DFT reformulates the ground-state
-problem in terms of the density \(n(\mathbf{r})\).
+problem in terms of the density $n(\mathbf{r})$.
 
 The Hohenberg-Kohn framework writes the ground-state energy as
 
@@ -42,7 +41,7 @@ $$
 E[n] = F[n] + \int V_{\mathrm{ext}}(\mathbf{r})\, n(\mathbf{r})\, d^3r,
 $$
 
-where \(V_{\mathrm{ext}}(\mathbf{r}) = -Z/r\), and \(F[n]\) is universal.
+where $V_{\mathrm{ext}}(\mathbf{r})=-Z/r$, and $F[n]$ is universal.
 
 ## 3. Kohn-Sham Decomposition
 
@@ -53,9 +52,9 @@ $$
 F[n] = T_s[n] + E_H[n] + E_{xc}[n].
 $$
 
-- \(T_s[n]\): non-interacting kinetic functional.
-- \(E_H[n]\): Hartree (classical Coulomb) energy.
-- \(E_{xc}[n]\): exchange-correlation (everything else).
+- $T_s[n]$: non-interacting kinetic functional.
+- $E_H[n]$: Hartree (classical Coulomb) energy.
+- $E_{xc}[n]$: exchange-correlation (everything else).
 
 The Hartree energy is
 
@@ -91,7 +90,7 @@ $$
 n(\mathbf{r}) = \sum_i f_i |\phi_i(\mathbf{r})|^2,
 $$
 
-where \(f_i\) are occupancies.
+where $f_i$ are occupancies.
 
 ## 4. Spherical Reduction Used in This Repo
 
@@ -107,7 +106,7 @@ $$
 u_{nl}(r) = r R_{nl}(r).
 $$
 
-Then each \((n,l)\) channel satisfies a 1D radial equation:
+Then each $(n,l)$ channel satisfies a 1D radial equation:
 
 $$
 \left[-\frac{1}{2}\frac{d^2}{dr^2} + \frac{l(l+1)}{2r^2} + V_{\mathrm{eff}}(r)\right]
@@ -132,7 +131,7 @@ $$
 0 \le f_{nl} \le 2(2l+1),
 $$
 
-(two spins times \((2l+1)\) magnetic degeneracy).
+(two spins times $(2l+1)$ magnetic degeneracy).
 
 ## 5. Spherical Hartree Potential Formula
 
@@ -151,7 +150,7 @@ V_H(r) = \frac{Q(r)}{r} + \int_r^{\infty}\frac{q(s)}{s}\, ds.
 $$
 
 This form is exactly what the implementation computes in
-`/Users/bshan/GitHub/pyDFT/src/pydft/core/potentials.py`.
+`src/pydft/core/potentials.py`.
 
 ## 6. LDA Exchange-Correlation in This Repo
 
@@ -179,7 +178,7 @@ $$
 r_s = \left(\frac{3}{4\pi n}\right)^{1/3}.
 $$
 
-For \(r_s < 1\):
+For $r_s<1$:
 
 $$
 \epsilon_c(r_s)=A\ln r_s + B + C r_s\ln r_s + D r_s,
@@ -191,7 +190,7 @@ $$
 A=0.0311,\; B=-0.048,\; C=0.0020,\; D=-0.0116.
 $$
 
-For \(r_s \ge 1\):
+For $r_s\ge1$:
 
 $$
 \epsilon_c(r_s)=\frac{\gamma}{1+\beta_1\sqrt{r_s}+\beta_2 r_s},
@@ -218,7 +217,7 @@ v_{xc}=v_x+v_c.
 $$
 
 Implementation location:
-`/Users/bshan/GitHub/pyDFT/src/pydft/core/functionals.py`.
+`src/pydft/core/functionals.py`.
 
 ## 7. Total Energy Expression Used for Reporting
 
@@ -246,13 +245,13 @@ in the orbital eigenvalue sum.
 
 ### 8.1 Radial grid
 
-Uniform grid on \([r_{\min}, r_{\max}]\):
+Uniform grid on $[r_{\min},r_{\max}]$:
 
 $$
 r_j = r_{\min} + j\Delta r,\quad j=0,\dots,N-1,
 $$
 
-with small positive \(r_{\min}\) to avoid singular division by zero.
+with small positive $r_{\min}$ to avoid singular division by zero.
 
 ### 8.2 Finite-difference radial Hamiltonian
 
@@ -284,11 +283,11 @@ Only interior points are solved, then boundary zeros are reattached. This
 removes spurious endpoint states and gives physically correct lowest energies.
 
 Implementation location:
-`/Users/bshan/GitHub/pyDFT/src/pydft/core/radial_solver.py`.
+`src/pydft/core/radial_solver.py`.
 
 ### 8.3 Spherical integrals
 
-For any spherical function \(f(r)\),
+For any spherical function $f(r)$,
 
 $$
 \int f(\mathbf{r})\, d^3r = 4\pi\int_0^{\infty} f(r)r^2 dr,
@@ -298,19 +297,19 @@ numerically evaluated by trapezoidal quadrature on the radial grid.
 
 ## 9. SCF Procedure in This Repo
 
-Given initial density \(n^{(0)}(r)\), for iteration \(k\):
+Given initial density $n^{(0)}(r)$, for iteration $k$:
 
-1. Build \(V_{\mathrm{eff}}[n^{(k)}]\).
-2. Solve radial KS eigenproblems for each \(l\).
-3. Fill electrons by ascending \(\epsilon_{nl}\) with capacity \(2(2l+1)\).
-4. Build output density \(\tilde{n}^{(k)}(r)\).
+1. Build $V_{\mathrm{eff}}[n^{(k)}]$.
+2. Solve radial KS eigenproblems for each $l$.
+3. Fill electrons by ascending $\epsilon_{nl}$ with capacity $2(2l+1)$.
+4. Build output density $\tilde{n}^{(k)}(r)$.
 5. Linear mixing:
 
 $$
 n^{(k+1)} = (1-\alpha)n^{(k)} + \alpha\tilde{n}^{(k)},
 $$
 
-where \(\alpha\) is `density_mixing`.
+where $\alpha$ is `density_mixing`.
 
 6. Normalize to electron count:
 
@@ -334,14 +333,14 @@ or maximum iterations reached.
 
 ## 10. Mapping GUI/CLI Parameters to Theory
 
-- `r_max`: radial simulation box size \(r_{\max}\).
-- `num_points`: grid resolution \(N\).
-- `l_max`: highest angular channel \(l\) included.
-- `states_per_l`: number of radial eigenstates kept per \(l\).
-- `density_mixing`: \(\alpha\) in linear mixing.
-- `density_tolerance`: SCF stop criterion \(\Delta\).
+- `r_max`: radial simulation box size $r_{\max}$.
+- `num_points`: grid resolution $N$.
+- `l_max`: highest angular channel $l$ included.
+- `states_per_l`: number of radial eigenstates kept per $l$.
+- `density_mixing`: $\alpha$ in linear mixing.
+- `density_tolerance`: SCF stop criterion $\Delta$.
 - `use_hartree`, `use_exchange`, `use_correlation`: switches for terms in
-  \(V_{\mathrm{eff}}\) and total-energy bookkeeping.
+  $V_{\mathrm{eff}}$ and total-energy bookkeeping.
 
 ## 11. Expected Behavior and Practical Interpretation
 
@@ -367,3 +366,9 @@ These simplifications are intentional for educational clarity.
 1. R. M. Martin, *Electronic Structure: Basic Theory and Practical Methods*.
 2. W. Kohn and L. J. Sham, Phys. Rev. 140, A1133 (1965).
 3. J. P. Perdew and A. Zunger, Phys. Rev. B 23, 5048 (1981).
+
+## 14. License and authorship
+
+This software is developed by **Prof. Bin Shan** ([bshan@mail.hust.edu.cn](mailto:bshan@mail.hust.edu.cn)).
+
+Released under the MIT License. See [../LICENSE](../LICENSE).
