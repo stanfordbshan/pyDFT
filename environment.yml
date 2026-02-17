@@ -1,0 +1,16 @@
+name: pydft
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - pip
+  - numpy>=1.25
+  - scipy>=1.11
+  - fastapi>=0.111
+  - uvicorn>=0.30
+  - pytest>=8.0
+  - httpx>=0.27
+  - pip:
+      - pywebview>=5.0
+      - -e .

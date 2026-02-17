@@ -1,16 +1,59 @@
-"""Standalone command-line interface for the pyDFT backend."""
+"""Argument parsing and CLI entrypoints for the core DFT engine."""
 
 from __future__ import annotations
 
 import argparse
 import json
 from pathlib import Path
+from typing import Any, Mapping
 
 import uvicorn
 
-from .models import SCFParameters
+from .dft_engine import run_scf
+from .models import AtomicSystem, SCFParameters
 from .presets import build_system
-from .scf import run_scf
+
+
+def parse_request_payload(payload: Mapping[str, Any]) -> tuple[AtomicSystem, SCFParameters]:
+    """Parse a dictionary payload into strongly-typed system/parameter objects.
+
+    This parser is reused by both CLI and pywebview bridge code to keep behavior
+    consistent between standalone and GUI-driven execution.
+    """
+
+    symbol = payload.get("symbol", "He")
+    atomic_number = _optional_int(payload.get("atomic_number"))
+    electrons = _optional_int(payload.get("electrons"))
+
+    params_data = payload.get("parameters", {})
+    if params_data is None:
+        params_data = {}
+    if not isinstance(params_data, Mapping):
+        raise ValueError("'parameters' must be an object")
+
+    system = build_system(symbol=symbol, atomic_number=atomic_number, electrons=electrons)
+    params = SCFParameters(
+        r_max=float(params_data.get("r_max", 20.0)),
+        num_points=int(params_data.get("num_points", 1200)),
+        max_iterations=int(params_data.get("max_iterations", 200)),
+        density_mixing=float(params_data.get("density_mixing", 0.3)),
+        density_tolerance=float(params_data.get("density_tolerance", 1e-6)),
+        l_max=int(params_data.get("l_max", 1)),
+        states_per_l=int(params_data.get("states_per_l", 4)),
+        use_hartree=bool(params_data.get("use_hartree", True)),
+        use_exchange=bool(params_data.get("use_exchange", True)),
+        use_correlation=bool(params_data.get("use_correlation", True)),
+    )
+
+    return system, params
+
+
+def _optional_int(value: Any) -> int | None:
+    """Return integer value or None, preserving None-like inputs."""
+
+    if value is None:
+        return None
+    return int(value)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -44,33 +87,33 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _run_calculation(args: argparse.Namespace) -> int:
-    system = build_system(
-        symbol=args.symbol,
-        atomic_number=args.atomic_number,
-        electrons=args.electrons,
-    )
-
-    params = SCFParameters(
-        r_max=args.r_max,
-        num_points=args.num_points,
-        max_iterations=args.max_iterations,
-        density_mixing=args.density_mixing,
-        density_tolerance=args.density_tolerance,
-        l_max=args.l_max,
-        states_per_l=args.states_per_l,
-        use_hartree=not args.disable_hartree,
-        use_exchange=not args.disable_exchange,
-        use_correlation=not args.disable_correlation,
-    )
+    payload = {
+        "symbol": args.symbol,
+        "atomic_number": args.atomic_number,
+        "electrons": args.electrons,
+        "parameters": {
+            "r_max": args.r_max,
+            "num_points": args.num_points,
+            "max_iterations": args.max_iterations,
+            "density_mixing": args.density_mixing,
+            "density_tolerance": args.density_tolerance,
+            "l_max": args.l_max,
+            "states_per_l": args.states_per_l,
+            "use_hartree": not args.disable_hartree,
+            "use_exchange": not args.disable_exchange,
+            "use_correlation": not args.disable_correlation,
+        },
+    }
+    system, params = parse_request_payload(payload)
 
     result = run_scf(system, params)
-    payload = result.to_dict()
+    result_payload = result.to_dict()
 
     if args.output is not None:
-        args.output.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        args.output.write_text(json.dumps(result_payload, indent=2), encoding="utf-8")
 
     if args.json:
-        print(json.dumps(payload, indent=2))
+        print(json.dumps(result_payload, indent=2))
     else:
         print(f"System: {result.system.symbol} (Z={result.system.atomic_number}, N={result.system.electrons})")
         print(f"Converged: {result.converged} in {result.iterations} iterations")
@@ -92,10 +135,9 @@ def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
 
-    command = args.command
-    if command == "serve":
+    if args.command == "serve":
         uvicorn.run(
-            "pydft.backend.api:app",
+            "pydft.core.api:app",
             host=args.host,
             port=args.port,
             reload=args.reload,

@@ -20,9 +20,9 @@ def make_radial_grid(r_max: float, num_points: int, r_min: float = 1.0e-5) -> np
 
 
 def spherical_integral(values: np.ndarray, r: np.ndarray) -> float:
-    """Return \int f(r) d^3r for a spherically symmetric function f(r)."""
+    r"""Return \int f(r) d^3r for a spherically symmetric function f(r)."""
 
-    return float(4.0 * np.pi * np.trapz(values * r * r, r))
+    return float(4.0 * np.pi * np.trapezoid(values * r * r, r))
 
 
 def normalize_density_to_electron_count(

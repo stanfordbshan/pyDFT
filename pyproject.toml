@@ -24,9 +24,10 @@ dev = [
 ]
 
 [project.scripts]
-pydft-cli = "pydft.backend.cli:main"
-pydft-api = "pydft.backend.api_server:run"
-pydft-webview = "pydft.frontend.app:main"
+pydft = "pydft.main:main"
+pydft-cli = "pydft.core.parser:main"
+pydft-api = "pydft.core.api_server:run"
+pydft-webview = "pydft.gui.window:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
@@ -36,7 +37,7 @@ include-package-data = true
 where = ["src"]
 
 [tool.setuptools.package-data]
-"pydft.frontend" = ["ui/*.html", "ui/*.css", "ui/*.js"]
+"pydft" = ["assets/*.html", "assets/*.css", "assets/*.js"]
 
 [tool.pytest.ini_options]
 minversion = "8.0"

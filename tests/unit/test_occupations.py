@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from pydft.backend.occupations import RadialState, fill_occupations
+from pydft.core.occupations import RadialState, fill_occupations
 
 
 def test_fill_occupations_respects_degeneracy() -> None:

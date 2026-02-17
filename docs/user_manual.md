@@ -16,7 +16,7 @@ From the repository root:
 pip install -e .
 ```
 
-Optional frontend dependency:
+Optional GUI dependency:
 
 ```bash
 pip install -e '.[frontend]'
@@ -28,7 +28,23 @@ Development/test dependencies:
 pip install -e '.[dev]'
 ```
 
-## 3. Run backend as a standalone program
+## 3. Run the desktop app (pywebview)
+
+Preferred entrypoint:
+
+```bash
+pydft
+```
+
+Equivalent command:
+
+```bash
+pydft-webview
+```
+
+The frontend talks to Python through the pywebview bridge API (`window.pywebview.api`).
+
+## 4. Run backend as a standalone program
 
 ### One SCF run
 
@@ -59,7 +75,7 @@ pydft-cli run \
   --l-max 0
 ```
 
-## 4. Run backend API
+## 5. Optional: run backend HTTP API
 
 ```bash
 pydft-api --host 127.0.0.1 --port 8000
@@ -84,17 +100,6 @@ curl -X POST http://127.0.0.1:8000/api/v1/scf \
     }
   }'
 ```
-
-## 5. Run pywebview frontend
-
-```bash
-pydft-webview
-```
-
-What it does:
-- Starts a local backend API server on a free localhost port.
-- Opens a desktop window.
-- Frontend calls backend through HTTP API only.
 
 ## 6. Run tests
 

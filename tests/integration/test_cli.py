@@ -19,7 +19,7 @@ def test_cli_json_output() -> None:
         [
             sys.executable,
             "-m",
-            "pydft.backend.cli",
+            "pydft.core.parser",
             "run",
             "--symbol",
             "H",

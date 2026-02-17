@@ -7,8 +7,8 @@ References used:
 
 from __future__ import annotations
 
-from pydft.backend.models import AtomicSystem, SCFParameters
-from pydft.backend.scf import run_scf
+from pydft.core.models import AtomicSystem, SCFParameters
+from pydft.core.dft_engine import run_scf
 
 
 def run_hydrogen_exact_mode() -> float:

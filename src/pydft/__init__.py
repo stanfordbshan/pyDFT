@@ -1,8 +1,9 @@
 """pyDFT package.
 
-This package contains:
-- A backend educational implementation of Kohn-Sham DFT using LDA.
-- A pywebview frontend that consumes the backend API.
+The package is organized into:
+- `pydft.core`: educational DFT numerics and standalone interfaces.
+- `pydft.gui`: pywebview desktop frontend logic.
+- `pydft.assets`: static HTML/CSS/JS assets rendered by the GUI.
 """
 
-__all__ = ["backend", "frontend"]
+__all__ = ["core", "gui"]

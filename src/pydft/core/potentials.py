@@ -12,7 +12,7 @@ def external_potential_coulomb(atomic_number: int, r: np.ndarray) -> np.ndarray:
 
 
 def hartree_potential_spherical(density: np.ndarray, r: np.ndarray) -> np.ndarray:
-    """Return the Hartree potential for a spherical density.
+    r"""Return the Hartree potential for a spherical density.
 
     Uses:
         V_H(r) = Q(r)/r + \int_r^\infty q(r')/r' dr'

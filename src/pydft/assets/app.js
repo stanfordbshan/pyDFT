@@ -26,13 +26,53 @@ function formatFloat(value, digits = 6) {
   return Number(value).toFixed(digits);
 }
 
-async function loadPresets() {
-  const response = await fetch(`${API_BASE}/api/v1/presets`);
-  if (!response.ok) {
-    throw new Error(`Failed to load presets: ${response.status}`);
+async function callBridge(method, payload = null) {
+  await ensureBridgeReady();
+  const pywebviewApi = window.pywebview && window.pywebview.api;
+  if (pywebviewApi && typeof pywebviewApi[method] === "function") {
+    return pywebviewApi[method](payload);
   }
 
-  const presets = await response.json();
+  // Browser fallback path for local API-server development.
+  if (method === "get_presets") {
+    const response = await fetch(`${API_BASE}/api/v1/presets`);
+    if (!response.ok) {
+      throw new Error(`Failed to load presets: ${response.status}`);
+    }
+    return response.json();
+  }
+
+  if (method === "run_scf") {
+    const response = await fetch(`${API_BASE}/api/v1/scf`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.detail || `Request failed (${response.status})`);
+    }
+    return data;
+  }
+
+  throw new Error(`Unsupported bridge method: ${method}`);
+}
+
+async function ensureBridgeReady() {
+  if (!window.pywebview) {
+    return;
+  }
+  if (window.pywebview.api) {
+    return;
+  }
+
+  await new Promise((resolve) => {
+    window.addEventListener("pywebviewready", resolve, { once: true });
+  });
+}
+
+async function loadPresets() {
+  const presets = await callBridge("get_presets");
   presetEl.innerHTML = "";
 
   for (const preset of presets) {
@@ -182,16 +222,7 @@ async function runCalculation(event) {
   };
 
   try {
-    const response = await fetch(`${API_BASE}/api/v1/scf`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.detail || `Request failed (${response.status})`);
-    }
+    const data = await callBridge("run_scf", payload);
 
     renderSummary(data);
     renderOrbitals(data);
@@ -209,6 +240,7 @@ async function runCalculation(event) {
 async function init() {
   try {
     setStatus("running", "Connecting");
+    await ensureBridgeReady();
     await loadPresets();
     setStatus("idle", "Idle");
   } catch (error) {

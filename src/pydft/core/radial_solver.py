@@ -21,13 +21,21 @@ def solve_radial_kohn_sham(
     if num_states < 1:
         raise ValueError("num_states must be >= 1")
 
+    if r.size < 3:
+        raise ValueError("radial grid must contain at least 3 points")
+
+    # Enforce u(0)=0 and u(r_max)=0 using a Dirichlet interior solve.
+    # This avoids an unphysical spurious state at the singular r->0 endpoint.
+    r_inner = r[1:-1]
+    v_inner = effective_potential[1:-1]
+
     dr = r[1] - r[0]
-    centrifugal = l * (l + 1) / (2.0 * r * r)
+    centrifugal = l * (l + 1) / (2.0 * r_inner * r_inner)
 
-    diagonal = (1.0 / (dr * dr)) + centrifugal + effective_potential
-    off_diagonal = np.full(r.size - 1, -0.5 / (dr * dr))
+    diagonal = (1.0 / (dr * dr)) + centrifugal + v_inner
+    off_diagonal = np.full(r_inner.size - 1, -0.5 / (dr * dr))
 
-    max_state = min(num_states - 1, r.size - 1)
+    max_state = min(num_states - 1, r_inner.size - 1)
     energies, vectors = eigh_tridiagonal(
         diagonal,
         off_diagonal,
@@ -37,8 +45,9 @@ def solve_radial_kohn_sham(
 
     orbitals: list[np.ndarray] = []
     for idx in range(vectors.shape[1]):
-        u = vectors[:, idx].copy()
-        norm = np.sqrt(np.trapz(u * u, r))
+        u = np.zeros_like(r)
+        u[1:-1] = vectors[:, idx]
+        norm = np.sqrt(np.trapezoid(u * u, r))
         if norm <= 0:
             raise RuntimeError("Encountered non-positive orbital normalization")
         orbitals.append(u / norm)

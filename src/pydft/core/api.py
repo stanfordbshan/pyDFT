@@ -8,9 +8,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from .models import SCFParameters
-from .presets import available_presets, build_system
-from .scf import run_scf
+from .parser import parse_request_payload
+from .presets import available_presets
+from .dft_engine import run_scf
 
 
 class SCFParametersPayload(BaseModel):
@@ -26,12 +26,6 @@ class SCFParametersPayload(BaseModel):
     use_hartree: bool = True
     use_exchange: bool = True
     use_correlation: bool = True
-
-    def to_dataclass(self) -> SCFParameters:
-        """Convert payload model into a backend dataclass."""
-
-        return SCFParameters(**self.model_dump())
-
 
 class SCFRequest(BaseModel):
     """JSON payload schema for one SCF calculation request."""
@@ -76,12 +70,15 @@ def solve(request: SCFRequest) -> dict:
     """Run one Kohn-Sham SCF calculation and return serialized results."""
 
     try:
-        system = build_system(
-            symbol=request.symbol,
-            atomic_number=request.atomic_number,
-            electrons=request.electrons,
+        system, params = parse_request_payload(
+            {
+                "symbol": request.symbol,
+                "atomic_number": request.atomic_number,
+                "electrons": request.electrons,
+                "parameters": request.parameters.model_dump(),
+            }
         )
-        result = run_scf(system, request.parameters.to_dataclass())
+        result = run_scf(system, params)
         return result.to_dict()
     except Exception as exc:  # pragma: no cover - keeps API error readable.
         raise HTTPException(status_code=400, detail=str(exc)) from exc
