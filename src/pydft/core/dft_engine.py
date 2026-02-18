@@ -1,4 +1,4 @@
-"""Self-consistent Kohn-Sham LDA/LSDA solver for simple spherical atoms."""
+"""Self-consistent solver dispatcher for educational LDA/LSDA/HF modes."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ import numpy as np
 
 from .functionals import lda_xc_unpolarized
 from .grid import make_radial_grid, normalize_density_to_electron_count, spherical_integral
+from .hartree_fock import run_hartree_fock
 from .lsda import lsda_xc, resolve_spin_configuration, split_density_from_polarization
 from .models import AtomicSystem, OrbitalResult, SCFParameters, SCFResult
 from .occupations import OccupiedState, RadialState, fill_occupations
@@ -47,7 +48,7 @@ class _SCFStepLSDA:
 
 
 def run_scf(system: AtomicSystem, params: SCFParameters | None = None) -> SCFResult:
-    """Run a Kohn-Sham SCF calculation for a simple spherical atom."""
+    """Run one SCF calculation for a simple spherical atom."""
 
     settings = params or SCFParameters()
     xc_model = settings.xc_model.strip().upper()
@@ -56,8 +57,10 @@ def run_scf(system: AtomicSystem, params: SCFParameters | None = None) -> SCFRes
         return _run_scf_lda(system, settings)
     if xc_model == "LSDA":
         return _run_scf_lsda(system, settings)
+    if xc_model == "HF":
+        return run_hartree_fock(system, settings)
 
-    raise ValueError("xc_model must be either 'LDA' or 'LSDA'")
+    raise ValueError("xc_model must be one of 'LDA', 'LSDA', or 'HF'")
 
 
 def _run_scf_lda(system: AtomicSystem, settings: SCFParameters) -> SCFResult:

@@ -92,6 +92,33 @@ def test_hydrogen_lda_lsda_against_nist_reference_values() -> None:
     assert abs(lsda.total_energy - (-0.478671)) < 6e-3
 
 
+def test_helium_hf_benchmark_against_reference() -> None:
+    """He HF total energy benchmark.
+
+    Standard nonrelativistic restricted HF reference for helium is
+    approximately -2.86168 Ha. A wider tolerance is used due to the
+    educational radial finite-difference setup.
+    """
+
+    system = AtomicSystem(symbol="He", atomic_number=2, electrons=2)
+    params = SCFParameters(
+        r_max=35.0,
+        num_points=1600,
+        max_iterations=260,
+        density_mixing=0.25,
+        density_tolerance=1e-7,
+        l_max=0,
+        states_per_l=1,
+        xc_model="HF",
+        spin_polarization=0.0,
+    )
+
+    result = run_scf(system, params)
+
+    assert result.xc_model == "HF"
+    assert abs(result.total_energy - (-2.86168)) < 0.08
+
+
 def test_helium_lda_benchmark_against_nist_range() -> None:
     """He LDA total energy benchmark against NIST LDA table.
 

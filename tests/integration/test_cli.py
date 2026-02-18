@@ -74,3 +74,37 @@ def test_cli_accepts_lsda_flags() -> None:
     payload = json.loads(completed.stdout)
     assert payload["xc_model"] == "LSDA"
     assert payload["spin_polarization"] > 0
+
+
+def test_cli_accepts_hf_mode() -> None:
+    env = os.environ.copy()
+    env["PYTHONPATH"] = f"{SRC}:{env.get('PYTHONPATH', '')}"
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pydft.core.parser",
+            "run",
+            "--symbol",
+            "He",
+            "--num-points",
+            "450",
+            "--max-iterations",
+            "120",
+            "--xc-model",
+            "HF",
+            "--spin-polarization",
+            "0.0",
+            "--json",
+        ],
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+    payload = json.loads(completed.stdout)
+    assert payload["xc_model"] == "HF"
+    assert payload["total_energy"] < -2.7

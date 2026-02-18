@@ -27,7 +27,7 @@ class SCFParametersPayload(BaseModel):
     use_hartree: bool = True
     use_exchange: bool = True
     use_correlation: bool = True
-    xc_model: Literal["LDA", "LSDA"] = "LDA"
+    xc_model: Literal["LDA", "LSDA", "HF"] = "LDA"
     spin_polarization: float | None = Field(default=None, ge=-1, le=1)
 
 
@@ -42,7 +42,7 @@ class SCFRequest(BaseModel):
 
 app = FastAPI(
     title="pyDFT backend API",
-    description="Educational Kohn-Sham LDA/LSDA backend",
+    description="Educational atomic LDA/LSDA/HF backend",
     version="0.1.0",
 )
 

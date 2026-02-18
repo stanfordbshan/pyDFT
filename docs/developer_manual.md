@@ -21,6 +21,7 @@ For a full derivation of the equations implemented in this repository, see:
 - `src/pydft/core/grid.py`: radial grid + spherical integration helpers.
 - `src/pydft/core/functionals.py`: LDA XC formulas.
 - `src/pydft/core/lsda.py`: LSDA spin-resolved XC formulas and spin splitting helpers.
+- `src/pydft/core/hartree_fock.py`: educational radial HF implementation.
 - `src/pydft/core/potentials.py`: external and Hartree potentials.
 - `src/pydft/core/radial_solver.py`: finite-difference radial eigenproblem.
 - `src/pydft/core/occupations.py`: occupancy filling and degeneracy handling.
@@ -64,6 +65,10 @@ $$
   - LDA: unpolarized Dirac exchange + PZ81 correlation.
   - LSDA: spin-resolved extension with $n_\uparrow$, $n_\downarrow$ and
     $\zeta=(n_\uparrow-n_\downarrow)/(n_\uparrow+n_\downarrow)$.
+- HF (current educational module):
+  - exchange-only, no correlation
+  - one occupied $1s$-like orbital per spin channel
+  - intended for up to two-electron atoms (H/He+/He)
 
 ### 3.3 Energy expression
 
@@ -83,6 +88,8 @@ $$
 - Build $V_{\mathrm{eff}}$ from current density.
 - In LSDA mode, build separate $V_{\mathrm{eff},\uparrow}$ and
   $V_{\mathrm{eff},\downarrow}$ from spin densities.
+- In HF mode, build spin-channel Fock-like radial potentials with same-spin
+  self-interaction cancellation.
 - Solve radial KS equations for each $l$ channel.
 - Fill electrons by ascending eigenvalue:
   - LDA: $2(2l+1)$ capacity per radial state.
@@ -117,6 +124,8 @@ Reference values currently used:
    $E=-0.5\ \mathrm{Ha}$.
 2. NIST Atomic DFT LDA helium total energy:
    $E_{\mathrm{tot}}=-2.834836\ \mathrm{Ha}$.
+3. Helium restricted HF reference:
+   $E_{\mathrm{tot}}\approx-2.86168\ \mathrm{Ha}$.
 
 NIST table URLs:
 - https://math.nist.gov/DFTdata/atomdata/node17.html

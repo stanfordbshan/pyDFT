@@ -2,12 +2,15 @@
 
 ## 1. What this project does
 
-`pyDFT` is an educational Kohn-Sham DFT implementation for simple atom-like systems.
+`pyDFT` is an educational atomic electronic-structure toolkit for simple systems.
 Current scope:
 - Spherical atoms (H, He+, He, Li, Be, Ne presets; custom Z/N also supported).
 - Local (Spin) Density Approximation:
   - LDA (spin-unpolarized): Dirac exchange + Perdew-Zunger correlation.
   - LSDA (spin-polarized): spin-resolved extension of the same exchange/correlation forms.
+- Educational Hartree-Fock (HF):
+  - exchange-only (no correlation)
+  - currently targeted at H, He+, He for clear LDA/LSDA/HF comparisons
 - Self-consistent field (SCF) solver on a finite-difference radial grid.
 
 For full theoretical background and derivations, see:
@@ -67,6 +70,15 @@ pydft-cli run \
   --disable-correlation
 ```
 
+HF example (helium):
+
+```bash
+pydft-cli run \
+  --symbol He \
+  --xc-model HF \
+  --spin-polarization 0.0
+```
+
 JSON output:
 
 ```bash
@@ -112,8 +124,8 @@ curl -X POST http://127.0.0.1:8000/api/v1/scf \
       "num_points": 1200,
       "max_iterations": 200,
       "density_mixing": 0.3,
-      "xc_model": "LSDA",
-      "spin_polarization": 1.0
+      "xc_model": "HF",
+      "spin_polarization": 0.0
     }
   }'
 ```
@@ -138,7 +150,7 @@ Accuracy depends on:
 - `r_max`
 - SCF mixing and tolerance
 - orbital basis span (`l_max`, `states_per_l`)
-- chosen XC model (`LDA` vs `LSDA`) and spin polarization setting (for `LSDA`)
+- chosen method (`LDA`, `LSDA`, or `HF`) and spin polarization setting (for `LSDA`/`HF`)
 
 Increase resolution for tighter agreement with reference data.
 

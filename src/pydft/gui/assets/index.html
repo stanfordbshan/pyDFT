@@ -16,7 +16,7 @@
           <p class="kicker">Educational DFT</p>
           <h1>pyDFT Workbench</h1>
           <p class="lede">
-            Solve simple atomic Kohn-Sham LDA/LSDA systems and inspect energies, orbitals, and density profiles.
+            Solve simple atomic LDA/LSDA/HF systems and inspect energies, orbitals, and density profiles.
           </p>
         </header>
 
@@ -90,14 +90,15 @@
           </label>
 
           <label>
-            XC model
+            Method
             <select id="xc-model">
               <option value="LDA">LDA (spin-unpolarized)</option>
               <option value="LSDA">LSDA (spin-polarized)</option>
+              <option value="HF">Hartree-Fock (exchange-only)</option>
             </select>
             <span class="field-hint">
-              LDA enforces paired spins. LSDA allows different spin-up/down densities, which can lower total
-              energy for open-shell atoms.
+              LDA enforces paired spins. LSDA allows spin asymmetry. HF is pure Hartree-Fock (exchange included,
+              correlation excluded) and is currently intended for H, He+, and He educational comparisons.
             </span>
           </label>
 
@@ -112,7 +113,7 @@
               placeholder="Optional, LSDA only (e.g. 0.333)"
             />
             <span class="field-hint">
-              Definition: zeta = (N_up - N_down) / N. Leave blank to use automatic spin split in LSDA mode.
+              Definition: zeta = (N_up - N_down) / N. Leave blank to use automatic spin split in LSDA/HF mode.
             </span>
           </label>
 

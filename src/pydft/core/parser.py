@@ -1,4 +1,4 @@
-"""Argument parsing and CLI entrypoints for the core DFT engine."""
+"""Argument parsing and CLI entrypoints for educational SCF solvers."""
 
 from __future__ import annotations
 
@@ -32,8 +32,8 @@ def parse_request_payload(payload: Mapping[str, Any]) -> tuple[AtomicSystem, SCF
         raise ValueError("'parameters' must be an object")
 
     xc_model = str(params_data.get("xc_model", "LDA")).strip().upper()
-    if xc_model not in {"LDA", "LSDA"}:
-        raise ValueError("parameters.xc_model must be either 'LDA' or 'LSDA'")
+    if xc_model not in {"LDA", "LSDA", "HF"}:
+        raise ValueError("parameters.xc_model must be one of 'LDA', 'LSDA', or 'HF'")
 
     spin_polarization = _optional_float(params_data.get("spin_polarization"))
     if spin_polarization is not None and (spin_polarization < -1.0 or spin_polarization > 1.0):
@@ -42,6 +42,16 @@ def parse_request_payload(payload: Mapping[str, Any]) -> tuple[AtomicSystem, SCF
     if xc_model == "LDA":
         # LDA is spin-unpolarized, so zeta is ignored even if provided.
         spin_polarization = None
+
+    use_hartree = bool(params_data.get("use_hartree", True))
+    use_exchange = bool(params_data.get("use_exchange", True))
+    use_correlation = bool(params_data.get("use_correlation", True))
+
+    if xc_model == "HF":
+        # Pure HF for this educational module.
+        use_hartree = True
+        use_exchange = True
+        use_correlation = False
 
     system = build_system(symbol=symbol, atomic_number=atomic_number, electrons=electrons)
     params = SCFParameters(
@@ -52,9 +62,9 @@ def parse_request_payload(payload: Mapping[str, Any]) -> tuple[AtomicSystem, SCF
         density_tolerance=float(params_data.get("density_tolerance", 1e-6)),
         l_max=int(params_data.get("l_max", 1)),
         states_per_l=int(params_data.get("states_per_l", 4)),
-        use_hartree=bool(params_data.get("use_hartree", True)),
-        use_exchange=bool(params_data.get("use_exchange", True)),
-        use_correlation=bool(params_data.get("use_correlation", True)),
+        use_hartree=use_hartree,
+        use_exchange=use_exchange,
+        use_correlation=use_correlation,
         xc_model=xc_model,
         spin_polarization=spin_polarization,
     )
@@ -83,7 +93,7 @@ def _optional_float(value: Any) -> float | None:
 def build_parser() -> argparse.ArgumentParser:
     """Create the top-level CLI parser with subcommands."""
 
-    parser = argparse.ArgumentParser(description="Educational LDA/LSDA Kohn-Sham solver")
+    parser = argparse.ArgumentParser(description="Educational LDA/LSDA/HF atomic solver")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     run_cmd = subparsers.add_parser("run", help="Run one SCF calculation")
@@ -102,15 +112,15 @@ def build_parser() -> argparse.ArgumentParser:
     run_cmd.add_argument("--disable-correlation", action="store_true", help="Disable correlation term")
     run_cmd.add_argument(
         "--xc-model",
-        choices=["LDA", "LSDA"],
+        choices=["LDA", "LSDA", "HF"],
         default="LDA",
-        help="Exchange-correlation model",
+        help="Method selector (LDA, LSDA, or HF)",
     )
     run_cmd.add_argument(
         "--spin-polarization",
         type=float,
         default=None,
-        help="Spin polarization zeta=(N_up-N_down)/N, only used by LSDA",
+        help="Spin polarization zeta=(N_up-N_down)/N, used by LSDA and HF",
     )
     run_cmd.add_argument("--json", action="store_true", help="Print result as raw JSON")
     run_cmd.add_argument("--output", type=Path, default=None, help="Optional JSON output path")
@@ -154,8 +164,8 @@ def _run_calculation(args: argparse.Namespace) -> int:
         print(json.dumps(result_payload, indent=2))
     else:
         print(f"System: {result.system.symbol} (Z={result.system.atomic_number}, N={result.system.electrons})")
-        print(f"XC model: {result.xc_model}")
-        if result.xc_model.upper() == "LSDA":
+        print(f"Method: {result.xc_model}")
+        if result.xc_model.upper() in {"LSDA", "HF"}:
             print(
                 "Spin channels: "
                 f"N_up={result.spin_up_electrons:.3f}, "

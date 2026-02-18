@@ -25,7 +25,7 @@ class AtomicSystem:
 
 @dataclass(slots=True)
 class SCFParameters:
-    """Numerical settings for the Kohn-Sham self-consistent field loop."""
+    """Numerical settings for educational DFT/HF self-consistent loops."""
 
     r_max: float = 20.0
     num_points: int = 1200

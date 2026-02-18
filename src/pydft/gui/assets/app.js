@@ -11,6 +11,11 @@ const orbitalBodyEl = document.querySelector("#orbital-table tbody");
 const logScaleEl = document.getElementById("log-density-scale");
 const xcModelEl = document.getElementById("xc-model");
 const spinPolarizationEl = document.getElementById("spin-polarization");
+const useHartreeEl = document.getElementById("use-hartree");
+const useExchangeEl = document.getElementById("use-exchange");
+const useCorrelationEl = document.getElementById("use-correlation");
+const lMaxEl = document.getElementById("l-max");
+const statesPerLEl = document.getElementById("states-per-l");
 const FALLBACK_PRESETS = [
   { symbol: "H", atomic_number: 1, electrons: 1 },
   { symbol: "He+", atomic_number: 2, electrons: 1 },
@@ -211,17 +216,24 @@ async function loadPresets() {
 }
 
 function renderSummary(result) {
-  const xcModel = String(result.xc_model || result.parameters?.xc_model || "LDA").toUpperCase();
-  const isLsda = xcModel === "LSDA";
+  const method = String(result.xc_model || result.parameters?.xc_model || "LDA").toUpperCase();
+  const isLsda = method === "LSDA";
+  const isHf = method === "HF";
   const spinUp = Number(result.spin_up_electrons ?? 0);
   const spinDown = Number(result.spin_down_electrons ?? 0);
   const zeta = Number(result.spin_polarization ?? 0);
-  const spinSummary = isLsda
+  const spinSummary = isLsda || isHf
     ? `N_up=${formatFloat(spinUp, 3)}, N_down=${formatFloat(spinDown, 3)}, zeta=${formatFloat(zeta, 3)}`
     : "Paired-spin mode (n_up = n_down)";
-  const influenceHint = isLsda
-    ? "LSDA can lower total energy for open-shell systems by allowing spin asymmetry."
-    : "LDA enforces paired spins; open-shell systems are often better described by LSDA.";
+  let influenceHint =
+    "LDA enforces paired spins; open-shell systems are often better described by LSDA or HF.";
+  if (isLsda) {
+    influenceHint = "LSDA can lower total energy for open-shell systems by allowing spin asymmetry.";
+  } else if (isHf) {
+    influenceHint =
+      "HF is exchange-only (no correlation); compare HF and LDA/LSDA to see correlation and self-interaction effects.";
+  }
+  const xcEnergyLabel = isHf ? "Exchange Energy (Ha)" : "XC Energy (Ha)";
 
   summaryEl.innerHTML = `
     <div class="summary-grid">
@@ -242,8 +254,8 @@ function renderSummary(result) {
         <div class="value">${formatFloat(result.total_energy, 8)}</div>
       </div>
       <div class="metric">
-        <div class="label">XC Model</div>
-        <div class="value">${xcModel}</div>
+        <div class="label">Method</div>
+        <div class="value">${method}</div>
       </div>
       <div class="metric">
         <div class="label">Spin Channels</div>
@@ -254,7 +266,7 @@ function renderSummary(result) {
         <div class="value">${formatFloat(result.hartree_energy, 8)}</div>
       </div>
       <div class="metric">
-        <div class="label">XC Energy (Ha)</div>
+        <div class="label">${xcEnergyLabel}</div>
         <div class="value">${formatFloat(result.xc_energy, 8)}</div>
       </div>
       <div class="metric">
@@ -284,17 +296,49 @@ function renderOrbitals(result) {
 }
 
 function updateSpinControlState() {
-  if (!xcModelEl || !spinPolarizationEl) {
+  if (!xcModelEl || !spinPolarizationEl || !useHartreeEl || !useExchangeEl || !useCorrelationEl) {
     return;
   }
 
-  const isLsda = xcModelEl.value.toUpperCase() === "LSDA";
-  spinPolarizationEl.disabled = !isLsda;
-  if (!isLsda) {
+  const method = xcModelEl.value.toUpperCase();
+  const isLsda = method === "LSDA";
+  const isHf = method === "HF";
+
+  spinPolarizationEl.disabled = !(isLsda || isHf);
+  if (!(isLsda || isHf)) {
     spinPolarizationEl.value = "";
     spinPolarizationEl.placeholder = "Disabled in LDA mode";
-  } else {
+  } else if (isLsda) {
     spinPolarizationEl.placeholder = "Optional, LSDA only (e.g. 0.333)";
+  } else {
+    spinPolarizationEl.placeholder = "Optional, HF only (default auto)";
+  }
+
+  if (isHf) {
+    useHartreeEl.checked = true;
+    useExchangeEl.checked = true;
+    useCorrelationEl.checked = false;
+    useHartreeEl.disabled = true;
+    useExchangeEl.disabled = true;
+    useCorrelationEl.disabled = true;
+    if (lMaxEl) {
+      lMaxEl.value = "0";
+      lMaxEl.disabled = true;
+    }
+    if (statesPerLEl) {
+      statesPerLEl.value = "1";
+      statesPerLEl.disabled = true;
+    }
+  } else {
+    useHartreeEl.disabled = false;
+    useExchangeEl.disabled = false;
+    useCorrelationEl.disabled = false;
+    if (lMaxEl) {
+      lMaxEl.disabled = false;
+    }
+    if (statesPerLEl) {
+      statesPerLEl.disabled = false;
+    }
   }
 }
 
@@ -463,15 +507,23 @@ async function runCalculation(event) {
   setStatus("running", "Running");
 
   const xcModel = (xcModelEl && xcModelEl.value ? xcModelEl.value : "LDA").toUpperCase();
+  const electrons = numberValue("electrons");
+  if (xcModel === "HF" && electrons > 2) {
+    runButtonEl.disabled = false;
+    setStatus("error", "Error");
+    summaryEl.innerHTML =
+      "<p>HF mode currently supports up to 2 electrons (H, He+, He) in this educational module.</p>";
+    return;
+  }
   const spinPolarization =
-    xcModel === "LSDA"
+    xcModel === "LSDA" || xcModel === "HF"
       ? optionalRangeNumberValue("spin-polarization", "Spin polarization", -1, 1)
       : null;
 
   const payload = {
     symbol: presetEl.value,
     atomic_number: numberValue("atomic-number"),
-    electrons: numberValue("electrons"),
+    electrons,
     parameters: {
       r_max: numberValue("r-max"),
       num_points: numberValue("num-points"),

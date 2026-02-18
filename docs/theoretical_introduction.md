@@ -11,8 +11,8 @@ The code models atom-like systems with these assumptions:
 1. Non-relativistic electrons.
 2. Fixed nuclei (Born-Oppenheimer approximation).
 3. Spherical symmetry (radial atom model).
-4. Local or local-spin density approximation (LDA/LSDA).
-5. Kohn-Sham self-consistent field (SCF) method.
+4. Local/local-spin DFT (LDA/LSDA) and educational Hartree-Fock (HF) comparisons.
+5. Self-consistent field (SCF) mean-field methods (Kohn-Sham DFT and HF).
 
 All equations are in atomic units (a.u.):
 
@@ -152,12 +152,13 @@ $$
 This form is exactly what the implementation computes in
 `src/pydft/core/potentials.py`.
 
-## 6. LDA and LSDA Exchange-Correlation in This Repo
+## 6. LDA, LSDA, and HF in This Repo
 
 The code provides both:
 
 1. LDA (spin-unpolarized), implemented in `src/pydft/core/functionals.py`.
 2. LSDA (spin-polarized), implemented in `src/pydft/core/lsda.py`.
+3. Educational radial HF, implemented in `src/pydft/core/hartree_fock.py`.
 
 Both use:
 
@@ -276,6 +277,27 @@ v_{xc,\uparrow}=v_{x,\uparrow}+v_{c,\uparrow},\quad
 v_{xc,\downarrow}=v_{x,\downarrow}+v_{c,\downarrow}.
 $$
 
+### 6.3 Educational HF model
+
+The HF module included here is intentionally minimal and transparent:
+
+1. It uses spin channels $n_\uparrow$ and $n_\downarrow$.
+2. For each spin channel, one occupied $1s$-like radial orbital is used.
+3. Same-spin self-interaction is canceled explicitly.
+
+For each spin channel, the effective radial potential is written as
+
+$$
+V_{\mathrm{eff},\uparrow}^{\mathrm{HF}}(r)=V_{\mathrm{ext}}(r)+V_H[n_\downarrow](r),
+$$
+
+$$
+V_{\mathrm{eff},\downarrow}^{\mathrm{HF}}(r)=V_{\mathrm{ext}}(r)+V_H[n_\uparrow](r).
+$$
+
+This is equivalent to Hartree plus exact cancellation of each channel's own
+Hartree self-term in the present one-orbital-per-spin setup.
+
 ## 7. Total Energy Expression Used for Reporting
 
 In LDA mode, the code reports
@@ -302,6 +324,15 @@ E_{\mathrm{tot}}^{\mathrm{LSDA}} = \sum_i f_i\epsilon_i
 - E_H[n] + E_{xc}[n_\uparrow,n_\downarrow]
 - \int \left[n_\uparrow v_{xc,\uparrow} + n_\downarrow v_{xc,\downarrow}\right]d^3r.
 $$
+
+In HF mode, total energy is reported as
+
+$$
+E_{\mathrm{tot}}^{\mathrm{HF}}=\sum_i f_i\epsilon_i-\left(E_H+E_x\right),
+$$
+
+where $E_x$ is the exchange energy (negative). In the current educational HF
+module, correlation is not included.
 
 The subtractions remove double counting of interaction terms already contained
 in the orbital eigenvalue sum.
@@ -368,6 +399,8 @@ Given initial density $n^{(0)}(r)$, for iteration $k$:
    - LDA: $V_{\mathrm{eff}}[n^{(k)}]$.
    - LSDA: $V_{\mathrm{eff},\uparrow}[n_\uparrow^{(k)},n_\downarrow^{(k)}]$ and
      $V_{\mathrm{eff},\downarrow}[n_\uparrow^{(k)},n_\downarrow^{(k)}]$.
+   - HF: spin-channel Fock-like potentials with same-spin self-interaction
+     cancellation.
 2. Solve radial KS eigenproblems for each $l$.
 3. Fill electrons by ascending $\epsilon_{nl}$:
    - LDA: capacity $2(2l+1)$.
@@ -416,9 +449,9 @@ or maximum iterations reached.
 - `density_tolerance`: SCF stop criterion $\Delta$.
 - `use_hartree`, `use_exchange`, `use_correlation`: switches for terms in
   $V_{\mathrm{eff}}$ and total-energy bookkeeping.
-- `xc_model`: chooses `LDA` or `LSDA`.
+- `xc_model`: chooses `LDA`, `LSDA`, or `HF`.
 - `spin_polarization`: optional $\zeta=(N_\uparrow-N_\downarrow)/N$ target in
-  LSDA mode.
+  LSDA/HF modes.
 
 ## 11. Expected Behavior and Practical Interpretation
 
@@ -435,8 +468,9 @@ or maximum iterations reached.
 
 1. Spherical symmetry only (no molecules, no angularly resolved geometry).
 2. Exchange-correlation restricted to LDA/LSDA (no GGA/hybrid/meta-GGA).
-3. No relativistic corrections.
-4. Finite-domain and finite-grid discretization errors.
+3. Educational HF module currently targets up to two-electron atoms.
+4. No relativistic corrections.
+5. Finite-domain and finite-grid discretization errors.
 
 These simplifications are intentional for educational clarity.
 
