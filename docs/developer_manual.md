@@ -29,7 +29,7 @@ For a full derivation of the equations implemented in this repository, see:
 - `src/pydft/api/app.py`: optional FastAPI endpoints.
 - `src/pydft/api/server.py`: `pydft-api` runner.
 - `src/pydft/gui/window.py`: `webview.create_window(...)` setup.
-- `src/pydft/gui/api.py`: Python-JS bridge class used by pywebview.
+- `src/pydft/gui/bridge.py`: Python-JS bridge class used by pywebview.
 - `src/pydft/gui/assets/*`: HTML/CSS/JS frontend assets.
 - `tests/unit/*`: unit tests.
 - `tests/integration/*`: integration + benchmark tests.

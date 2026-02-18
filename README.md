@@ -46,7 +46,7 @@ pyDFT/
 │       │   ├── __init__.py
 │       │   ├── __main__.py
 │       │   ├── window.py
-│       │   ├── api.py
+│       │   ├── bridge.py
 │       │   └── assets/
 │       │       ├── index.html
 │       │       ├── styles.css
