@@ -37,8 +37,11 @@ pyDFT/
 │       │   ├── radial_solver.py
 │       │   ├── occupations.py
 │       │   ├── presets.py
-│       │   ├── api.py
-│       │   └── api_server.py
+│       ├── api/
+│       │   ├── __init__.py
+│       │   ├── __main__.py
+│       │   ├── app.py
+│       │   └── server.py
 │       ├── gui/
 │       │   ├── __init__.py
 │       │   ├── __main__.py

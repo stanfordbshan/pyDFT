@@ -1,4 +1,4 @@
-"""FastAPI application that exposes backend DFT calculations."""
+"""FastAPI application that exposes backend DFT/HF calculations."""
 
 from __future__ import annotations
 
@@ -9,9 +9,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from .parser import parse_request_payload
-from .presets import available_presets
-from .dft_engine import run_scf
+from pydft.core.dft_engine import run_scf
+from pydft.core.parser import parse_request_payload
+from pydft.core.presets import available_presets
 
 
 class SCFParametersPayload(BaseModel):
@@ -71,7 +71,7 @@ def presets() -> list[dict]:
 
 @app.post("/api/v1/scf")
 def solve(request: SCFRequest) -> dict:
-    """Run one Kohn-Sham SCF calculation and return serialized results."""
+    """Run one SCF calculation and return serialized results."""
 
     try:
         system, params = parse_request_payload(

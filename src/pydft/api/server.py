@@ -24,7 +24,7 @@ def run() -> None:
     args = parser.parse_args()
 
     uvicorn.run(
-        "pydft.core.api:app",
+        "pydft.api.app:app",
         host=args.host,
         port=args.port,
         reload=args.reload,

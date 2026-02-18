@@ -26,8 +26,8 @@ For a full derivation of the equations implemented in this repository, see:
 - `src/pydft/core/radial_solver.py`: finite-difference radial eigenproblem.
 - `src/pydft/core/occupations.py`: occupancy filling and degeneracy handling.
 - `src/pydft/core/presets.py`: simple-system presets.
-- `src/pydft/core/api.py`: optional FastAPI endpoints.
-- `src/pydft/core/api_server.py`: `pydft-api` runner.
+- `src/pydft/api/app.py`: optional FastAPI endpoints.
+- `src/pydft/api/server.py`: `pydft-api` runner.
 - `src/pydft/gui/window.py`: `webview.create_window(...)` setup.
 - `src/pydft/gui/api.py`: Python-JS bridge class used by pywebview.
 - `src/pydft/gui/assets/*`: HTML/CSS/JS frontend assets.
