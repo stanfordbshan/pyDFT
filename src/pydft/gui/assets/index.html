@@ -103,6 +103,27 @@
           </label>
 
           <label>
+            Compute mode
+            <select id="compute-mode">
+              <option value="auto">Auto (direct then API fallback)</option>
+              <option value="direct">Direct (in-process)</option>
+              <option value="api">API (remote HTTP)</option>
+            </select>
+            <span class="field-hint">
+              Direct runs locally in this app process. API mode posts to the configured backend URL. Auto tries
+              direct first and falls back to API on failure.
+            </span>
+          </label>
+
+          <label>
+            API base URL
+            <input id="api-base" type="text" value="http://127.0.0.1:8000" />
+            <span class="field-hint">
+              Used by API mode and by Auto fallback. Format example: http://127.0.0.1:8000
+            </span>
+          </label>
+
+          <label>
             Spin polarization zeta
             <input
               id="spin-polarization"

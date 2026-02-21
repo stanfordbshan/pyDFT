@@ -1,5 +1,5 @@
 const query = new URLSearchParams(window.location.search);
-const API_BASE = query.get("apiBase") || "http://127.0.0.1:8000";
+const DEFAULT_API_BASE = query.get("apiBase") || "http://127.0.0.1:8000";
 
 const presetEl = document.getElementById("preset");
 const formEl = document.getElementById("scf-form");
@@ -10,6 +10,8 @@ const rawJsonEl = document.getElementById("raw-json");
 const orbitalBodyEl = document.querySelector("#orbital-table tbody");
 const logScaleEl = document.getElementById("log-density-scale");
 const xcModelEl = document.getElementById("xc-model");
+const computeModeEl = document.getElementById("compute-mode");
+const apiBaseEl = document.getElementById("api-base");
 const spinPolarizationEl = document.getElementById("spin-polarization");
 const useHartreeEl = document.getElementById("use-hartree");
 const useExchangeEl = document.getElementById("use-exchange");
@@ -46,6 +48,21 @@ function positiveNumberValue(id, fieldLabel) {
 
 function boolValue(id) {
   return Boolean(document.getElementById(id).checked);
+}
+
+function currentApiBase() {
+  if (!apiBaseEl) {
+    return DEFAULT_API_BASE;
+  }
+  const value = apiBaseEl.value.trim();
+  return value || DEFAULT_API_BASE;
+}
+
+function currentComputeMode() {
+  if (!computeModeEl) {
+    return "auto";
+  }
+  return String(computeModeEl.value || "auto").toLowerCase();
 }
 
 function optionalRangeNumberValue(id, fieldLabel, minValue, maxValue) {
@@ -131,6 +148,19 @@ function buildLogTickValues(yMin, yMax, maxTicks = 7) {
   return ticks.sort((a, b) => a - b);
 }
 
+async function ensureBridgeReady() {
+  if (!window.pywebview) {
+    return;
+  }
+  if (window.pywebview.api) {
+    return;
+  }
+
+  await new Promise((resolve) => {
+    window.addEventListener("pywebviewready", resolve, { once: true });
+  });
+}
+
 async function callBridge(method, payload = null) {
   await ensureBridgeReady();
   const pywebviewApi = window.pywebview && window.pywebview.api;
@@ -143,40 +173,51 @@ async function callBridge(method, payload = null) {
 
   // Browser fallback path for local API-server development.
   if (method === "get_presets") {
-    const response = await fetch(`${API_BASE}/api/v1/presets`);
+    const response = await fetch(`${currentApiBase()}/api/v1/presets`);
     if (!response.ok) {
       throw new Error(`Failed to load presets: ${response.status}`);
     }
     return response.json();
   }
 
-  if (method === "run_scf") {
-    const response = await fetch(`${API_BASE}/api/v1/scf`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.detail || `Request failed (${response.status})`);
-    }
-    return data;
-  }
-
   throw new Error(`Unsupported bridge method: ${method}`);
 }
 
-async function ensureBridgeReady() {
-  if (!window.pywebview) {
-    return;
+async function runScfViaHttp(payload, apiBase) {
+  const response = await fetch(`${apiBase}/api/v1/scf`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.detail || `Request failed (${response.status})`);
   }
-  if (window.pywebview.api) {
-    return;
+  data._execution_path = data._execution_path || "api";
+  return data;
+}
+
+async function runScfWithMode(payload, mode, apiBase) {
+  await ensureBridgeReady();
+  const pywebviewApi = window.pywebview && window.pywebview.api;
+  if (pywebviewApi && typeof pywebviewApi.run_scf === "function") {
+    return pywebviewApi.run_scf({
+      mode,
+      api_base: apiBase,
+      request: payload,
+    });
   }
 
-  await new Promise((resolve) => {
-    window.addEventListener("pywebviewready", resolve, { once: true });
-  });
+  if (mode === "direct") {
+    throw new Error("Direct mode requires desktop pywebview execution.");
+  }
+
+  if (mode === "api" || mode === "auto") {
+    // Browser-only mode: auto degrades to API.
+    return runScfViaHttp(payload, apiBase);
+  }
+
+  throw new Error("Compute mode must be one of: direct, api, auto.");
 }
 
 async function loadPresets() {
@@ -217,6 +258,7 @@ async function loadPresets() {
 
 function renderSummary(result) {
   const method = String(result.xc_model || result.parameters?.xc_model || "LDA").toUpperCase();
+  const executionPath = String(result._execution_path || "n/a");
   const isLsda = method === "LSDA";
   const isHf = method === "HF";
   const spinUp = Number(result.spin_up_electrons ?? 0);
@@ -256,6 +298,10 @@ function renderSummary(result) {
       <div class="metric">
         <div class="label">Method</div>
         <div class="value">${method}</div>
+      </div>
+      <div class="metric">
+        <div class="label">Execution Path</div>
+        <div class="value">${executionPath}</div>
       </div>
       <div class="metric">
         <div class="label">Spin Channels</div>
@@ -507,6 +553,9 @@ async function runCalculation(event) {
   setStatus("running", "Running");
 
   const xcModel = (xcModelEl && xcModelEl.value ? xcModelEl.value : "LDA").toUpperCase();
+  const mode = currentComputeMode();
+  const apiBase = currentApiBase();
+
   const electrons = numberValue("electrons");
   if (xcModel === "HF" && electrons > 2) {
     runButtonEl.disabled = false;
@@ -515,6 +564,7 @@ async function runCalculation(event) {
       "<p>HF mode currently supports up to 2 electrons (H, He+, He) in this educational module.</p>";
     return;
   }
+
   const spinPolarization =
     xcModel === "LSDA" || xcModel === "HF"
       ? optionalRangeNumberValue("spin-polarization", "Spin polarization", -1, 1)
@@ -541,7 +591,7 @@ async function runCalculation(event) {
   };
 
   try {
-    const data = await callBridge("run_scf", payload);
+    const data = await runScfWithMode(payload, mode, apiBase);
 
     latestResult = data;
     renderSummary(data);
@@ -560,6 +610,9 @@ async function runCalculation(event) {
 async function init() {
   try {
     setStatus("running", "Connecting");
+    if (apiBaseEl) {
+      apiBaseEl.value = DEFAULT_API_BASE;
+    }
     await ensureBridgeReady();
     await loadPresets();
     updateSpinControlState();
