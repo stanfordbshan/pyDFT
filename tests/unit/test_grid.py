@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from pydft.core.grid import make_radial_grid, normalize_density_to_electron_count, spherical_integral
+from pydft.methods.atomic.grid import make_radial_grid, normalize_density_to_electron_count, spherical_integral
 
 
 def test_make_radial_grid_is_monotonic() -> None:

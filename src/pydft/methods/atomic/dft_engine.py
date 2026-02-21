@@ -6,11 +6,12 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from pydft.core.models import AtomicSystem, OrbitalResult, SCFParameters, SCFResult
+
 from .functionals import lda_xc_unpolarized
 from .grid import make_radial_grid, normalize_density_to_electron_count, spherical_integral
 from .hartree_fock import run_hartree_fock
 from .lsda import lsda_xc, resolve_spin_configuration, split_density_from_polarization
-from .models import AtomicSystem, OrbitalResult, SCFParameters, SCFResult
 from .occupations import OccupiedState, RadialState, fill_occupations
 from .potentials import external_potential_coulomb, hartree_potential_spherical
 from .radial_solver import solve_radial_kohn_sham

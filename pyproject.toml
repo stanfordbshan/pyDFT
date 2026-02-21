@@ -25,7 +25,7 @@ dev = [
 
 [project.scripts]
 pydft = "pydft.main:main"
-pydft-cli = "pydft.core.parser:main"
+pydft-cli = "pydft.cli:main"
 pydft-api = "pydft.api.server:run"
 pydft-webview = "pydft.gui.window:main"
 

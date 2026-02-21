@@ -19,7 +19,7 @@ def test_cli_json_output() -> None:
         [
             sys.executable,
             "-m",
-            "pydft.core.parser",
+            "pydft.cli",
             "run",
             "--symbol",
             "H",
@@ -50,7 +50,7 @@ def test_cli_accepts_lsda_flags() -> None:
         [
             sys.executable,
             "-m",
-            "pydft.core.parser",
+            "pydft.cli",
             "run",
             "--symbol",
             "H",
@@ -84,7 +84,7 @@ def test_cli_accepts_hf_mode() -> None:
         [
             sys.executable,
             "-m",
-            "pydft.core.parser",
+            "pydft.cli",
             "run",
             "--symbol",
             "He",

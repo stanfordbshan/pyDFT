@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from pydft.core.hartree_fock import run_hartree_fock
+from pydft.methods.atomic.hartree_fock import run_hartree_fock
 from pydft.core.models import AtomicSystem, SCFParameters
 
 

@@ -1,7 +1,14 @@
-"""Core DFT backend package for pyDFT."""
+"""Core transport-independent models and shared mapping utilities."""
 
-from .dft_engine import run_scf
-from .hartree_fock import run_hartree_fock
 from .models import AtomicSystem, SCFParameters, SCFResult
+from .presets import available_presets, build_system
+from .request_mapper import parse_request_payload
 
-__all__ = ["AtomicSystem", "SCFParameters", "SCFResult", "run_scf", "run_hartree_fock"]
+__all__ = [
+    "AtomicSystem",
+    "SCFParameters",
+    "SCFResult",
+    "available_presets",
+    "build_system",
+    "parse_request_payload",
+]

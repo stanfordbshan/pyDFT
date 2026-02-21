@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from pydft.core.parser import parse_request_payload
+from pydft.core.request_mapper import parse_request_payload
 
 
 def test_parse_request_payload_accepts_lsda_settings() -> None:

@@ -2,16 +2,13 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from pydft.core.dft_engine import run_scf
-from pydft.core.parser import parse_request_payload
-from pydft.core.presets import available_presets
+from pydft.application.scf import list_preset_dicts, run_calculation_from_payload
 
 
 class SCFParametersPayload(BaseModel):
@@ -66,7 +63,7 @@ def health() -> dict[str, str]:
 def presets() -> list[dict]:
     """Return bundled system presets."""
 
-    return [asdict(system) for system in available_presets()]
+    return list_preset_dicts()
 
 
 @app.post("/api/v1/scf")
@@ -74,7 +71,7 @@ def solve(request: SCFRequest) -> dict:
     """Run one SCF calculation and return serialized results."""
 
     try:
-        system, params = parse_request_payload(
+        result = run_calculation_from_payload(
             {
                 "symbol": request.symbol,
                 "atomic_number": request.atomic_number,
@@ -82,7 +79,6 @@ def solve(request: SCFRequest) -> dict:
                 "parameters": request.parameters.model_dump(),
             }
         )
-        result = run_scf(system, params)
         return result.to_dict()
     except Exception as exc:  # pragma: no cover - keeps API error readable.
         raise HTTPException(status_code=400, detail=str(exc)) from exc

@@ -3,8 +3,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from pydft.core.functionals import lda_xc_unpolarized
-from pydft.core.lsda import lsda_xc, resolve_spin_configuration
+from pydft.methods.atomic.functionals import lda_xc_unpolarized
+from pydft.methods.atomic.lsda import lsda_xc, resolve_spin_configuration
 
 
 def test_resolve_spin_configuration_default_split() -> None:

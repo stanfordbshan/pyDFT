@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pydft.core.models import AtomicSystem, SCFParameters
-from pydft.core.dft_engine import run_scf
+from pydft.methods.atomic.dft_engine import run_scf
 
 
 def test_hydrogen_single_particle_benchmark() -> None:

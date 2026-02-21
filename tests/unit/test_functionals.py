@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from pydft.core.functionals import lda_xc_unpolarized
+from pydft.methods.atomic.functionals import lda_xc_unpolarized
 
 
 def test_exchange_matches_dirac_formula() -> None:

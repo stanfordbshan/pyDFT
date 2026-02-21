@@ -16,9 +16,10 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from pydft.core.models import AtomicSystem, OrbitalResult, SCFParameters, SCFResult
+
 from .grid import make_radial_grid, normalize_density_to_electron_count, spherical_integral
 from .lsda import resolve_spin_configuration, split_density_from_polarization
-from .models import AtomicSystem, OrbitalResult, SCFParameters, SCFResult
 from .potentials import external_potential_coulomb, hartree_potential_spherical
 from .radial_solver import solve_radial_kohn_sham
 

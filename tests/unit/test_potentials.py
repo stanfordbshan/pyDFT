@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from pydft.core.grid import make_radial_grid, spherical_integral
-from pydft.core.potentials import hartree_potential_spherical
+from pydft.methods.atomic.grid import make_radial_grid, spherical_integral
+from pydft.methods.atomic.potentials import hartree_potential_spherical
 
 
 def test_hartree_of_zero_density_is_zero() -> None:
