@@ -150,15 +150,15 @@ V_H(r) = \frac{Q(r)}{r} + \int_r^{\infty}\frac{q(s)}{s}\, ds.
 $$
 
 This form is exactly what the implementation computes in
-`src/pydft/core/potentials.py`.
+`src/pydft/methods/atomic/potentials.py`.
 
 ## 6. LDA, LSDA, and HF in This Repo
 
 The code provides both:
 
-1. LDA (spin-unpolarized), implemented in `src/pydft/core/functionals.py`.
-2. LSDA (spin-polarized), implemented in `src/pydft/core/lsda.py`.
-3. Educational radial HF, implemented in `src/pydft/core/hartree_fock.py`.
+1. LDA (spin-unpolarized), implemented in `src/pydft/methods/atomic/functionals.py`.
+2. LSDA (spin-polarized), implemented in `src/pydft/methods/atomic/lsda.py`.
+3. Educational radial HF, implemented in `src/pydft/methods/atomic/hartree_fock.py`.
 
 Both use:
 
@@ -379,7 +379,7 @@ Only interior points are solved, then boundary zeros are reattached. This
 removes spurious endpoint states and gives physically correct lowest energies.
 
 Implementation location:
-`src/pydft/core/radial_solver.py`.
+`src/pydft/methods/atomic/radial_solver.py`.
 
 ### 8.3 Spherical integrals
 

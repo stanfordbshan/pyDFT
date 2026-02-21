@@ -1,66 +1,64 @@
 # User Manual
 
-## 1. What this project does
+## 1. What pyDFT Does
 
-`pyDFT` is an educational atomic electronic-structure toolkit for simple systems.
-Current scope:
-- Spherical atoms (H, He+, He, Li, Be, Ne presets; custom Z/N also supported).
-- Local (Spin) Density Approximation:
-  - LDA (spin-unpolarized): Dirac exchange + Perdew-Zunger correlation.
-  - LSDA (spin-polarized): spin-resolved extension of the same exchange/correlation forms.
-- Educational Hartree-Fock (HF):
-  - exchange-only (no correlation)
-  - currently targeted at H, He+, He for clear LDA/LSDA/HF comparisons
-- Self-consistent field (SCF) solver on a finite-difference radial grid.
+`pyDFT` is an educational toolkit for simple atom-like electronic-structure calculations.
 
-For full theoretical background and derivations, see:
-- [theoretical_introduction.md](theoretical_introduction.md)
+Supported method families:
 
-## 2. Install
+- `LDA` (spin-unpolarized)
+- `LSDA` (spin-polarized)
+- educational `HF` (exchange-only, currently targeted at H/He+/He)
 
-From the repository root:
+## 2. Installation
+
+From repository root:
 
 ```bash
 pip install -e .
 ```
 
-Optional GUI dependency:
+Optional desktop GUI dependency:
 
 ```bash
 pip install -e '.[frontend]'
 ```
 
-Development/test dependencies:
+Testing dependencies:
 
 ```bash
 pip install -e '.[dev]'
 ```
 
-## 3. Run the desktop app (pywebview)
+## 3. Local Usage
 
-Preferred entrypoint:
+### 3.1 Desktop GUI
 
 ```bash
 pydft
 ```
 
-Equivalent command:
+In GUI you can select:
 
-```bash
-pydft-webview
-```
+- method (`LDA`, `LSDA`, `HF`)
+- compute mode (`direct`, `api`, `auto`)
+- API base URL (used by `api` mode and `auto` fallback)
 
-The frontend talks to Python through the pywebview bridge API (`window.pywebview.api`).
+Compute modes:
 
-## 4. Run backend as a standalone program
+- `direct`: run inside local desktop process
+- `api`: always call remote/local HTTP backend
+- `auto`: try direct first, fallback to API
 
-### One SCF run
+### 3.2 CLI
+
+Basic run:
 
 ```bash
 pydft-cli run --symbol He --num-points 1200 --max-iterations 200
 ```
 
-LSDA example (open-shell hydrogen, exchange-only):
+LSDA example:
 
 ```bash
 pydft-cli run \
@@ -70,7 +68,7 @@ pydft-cli run \
   --disable-correlation
 ```
 
-HF example (helium):
+HF example:
 
 ```bash
 pydft-cli run \
@@ -85,30 +83,16 @@ JSON output:
 pydft-cli run --symbol He --json
 ```
 
-Write JSON to file:
+## 4. Remote Backend Usage
+
+Start API server on backend machine:
 
 ```bash
-pydft-cli run --symbol He --json --output he_result.json
+pydft-api --host 0.0.0.0 --port 8000
 ```
 
-### Benchmark-style hydrogen run (single-particle mode)
+Main endpoints:
 
-```bash
-pydft-cli run \
-  --symbol H \
-  --disable-hartree \
-  --disable-exchange \
-  --disable-correlation \
-  --l-max 0
-```
-
-## 5. Optional: run backend HTTP API
-
-```bash
-pydft-api --host 127.0.0.1 --port 8000
-```
-
-Endpoints:
 - `GET /api/v1/health`
 - `GET /api/v1/presets`
 - `POST /api/v1/scf`
@@ -130,31 +114,55 @@ curl -X POST http://127.0.0.1:8000/api/v1/scf \
   }'
 ```
 
-## 6. Run tests
+Then in GUI set:
+
+- `Compute mode = api` (or `auto`)
+- `API base URL = http://<server-ip>:8000`
+
+## 5. Troubleshooting
+
+### GUI says direct mode unavailable
+
+You are likely running browser-only frontend (no pywebview host). Use `api` mode or launch with `pydft`.
+
+### Auto mode fails
+
+Check both:
+
+1. local Python environment for direct mode
+2. API base URL reachability for fallback mode
+
+### HF run errors on larger atoms
+
+Current educational HF module is intentionally limited to up to two electrons.
+
+### Convergence is slow
+
+Try:
+
+- increasing `max_iterations`
+- reducing `density_mixing` (e.g. `0.2`)
+- using slightly looser `density_tolerance` (e.g. `1e-5`)
+
+## 6. Testing
+
+Run complete test suite:
 
 ```bash
 pytest
 ```
 
-## 7. Run benchmarks
+## 7. Accuracy Notes
 
-```bash
-python -m benchmarks.benchmark_atoms
-```
+This project prioritizes readability and educational transparency over production-level performance.
+Results depend on grid, basis truncation, and convergence settings.
 
-## 8. Notes about accuracy
+## 8. Related Docs
 
-This code prioritizes educational clarity over production-level numerical performance.
-Accuracy depends on:
-- `num_points`
-- `r_max`
-- SCF mixing and tolerance
-- orbital basis span (`l_max`, `states_per_l`)
-- chosen method (`LDA`, `LSDA`, or `HF`) and spin polarization setting (for `LSDA`/`HF`)
+- [Developer Manual](developer_manual.md)
+- [Theoretical Introduction](theoretical_introduction.md)
 
-Increase resolution for tighter agreement with reference data.
-
-## 9. License and authorship
+## 9. License and Authorship
 
 This software is developed by **Prof. Bin Shan** ([bshan@mail.hust.edu.cn](mailto:bshan@mail.hust.edu.cn)).
 

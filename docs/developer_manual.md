@@ -1,139 +1,166 @@
 # Developer Manual
 
-## 1. Architecture goals
+## 1. Architecture Overview
 
-The codebase is split into backend and frontend concerns.
+This repository follows strict layered architecture to keep transport code separate from computational logic.
 
-- Backend (`pydft.core`): physics, numerics, standalone CLI, optional HTTP API.
-- Frontend (`pydft.gui` + `pydft.gui.assets`): pywebview window + JavaScript UI.
+### Layers
 
-No DFT math is implemented in the frontend.
+- `pydft/core`: pure domain contracts and shared mapping/validation
+- `pydft/application`: transport-agnostic use-cases/orchestration
+- `pydft/methods/atomic`: category-specific numerical implementations (LDA/LSDA/HF)
+- `pydft/api`: HTTP adapter only (FastAPI schemas/routes/server)
+- `pydft/gui`: pywebview adapter only (window lifecycle + bridge)
+- `pydft/gui/assets`: static frontend files
+- `pydft/cli.py`: CLI adapter only
 
-For a full derivation of the equations implemented in this repository, see:
-- [theoretical_introduction.md](theoretical_introduction.md)
+## 2. Full File Tree
 
-## 2. Directory layout
+```text
+pyDFT/
+├── pyproject.toml
+├── README.md
+├── src/
+│   └── pydft/
+│       ├── __init__.py
+│       ├── __main__.py
+│       ├── main.py
+│       ├── cli.py
+│       ├── core/
+│       │   ├── __init__.py
+│       │   ├── __main__.py
+│       │   ├── models.py
+│       │   ├── presets.py
+│       │   ├── request_mapper.py
+│       │   └── parser.py
+│       ├── application/
+│       │   ├── __init__.py
+│       │   └── scf.py
+│       ├── methods/
+│       │   ├── __init__.py
+│       │   └── atomic/
+│       │       ├── __init__.py
+│       │       ├── dft_engine.py
+│       │       ├── functionals.py
+│       │       ├── grid.py
+│       │       ├── hartree_fock.py
+│       │       ├── lsda.py
+│       │       ├── occupations.py
+│       │       ├── potentials.py
+│       │       └── radial_solver.py
+│       ├── api/
+│       │   ├── __init__.py
+│       │   ├── __main__.py
+│       │   ├── app.py
+│       │   └── server.py
+│       └── gui/
+│           ├── __init__.py
+│           ├── __main__.py
+│           ├── bridge.py
+│           ├── window.py
+│           └── assets/
+│               ├── index.html
+│               ├── styles.css
+│               └── app.js
+├── tests/
+│   ├── unit/
+│   └── integration/
+└── docs/
+```
 
-- `src/pydft/main.py`: top-level app entrypoint.
-- `src/pydft/core/dft_engine.py`: SCF loop and total-energy assembly.
-- `src/pydft/core/parser.py`: CLI + payload parsing helpers.
-- `src/pydft/core/models.py`: shared dataclasses.
-- `src/pydft/core/grid.py`: radial grid + spherical integration helpers.
-- `src/pydft/core/functionals.py`: LDA XC formulas.
-- `src/pydft/core/lsda.py`: LSDA spin-resolved XC formulas and spin splitting helpers.
-- `src/pydft/core/hartree_fock.py`: educational radial HF implementation.
-- `src/pydft/core/potentials.py`: external and Hartree potentials.
-- `src/pydft/core/radial_solver.py`: finite-difference radial eigenproblem.
-- `src/pydft/core/occupations.py`: occupancy filling and degeneracy handling.
-- `src/pydft/core/presets.py`: simple-system presets.
-- `src/pydft/api/app.py`: optional FastAPI endpoints.
-- `src/pydft/api/server.py`: `pydft-api` runner.
-- `src/pydft/gui/window.py`: `webview.create_window(...)` setup.
-- `src/pydft/gui/bridge.py`: Python-JS bridge class used by pywebview.
-- `src/pydft/gui/assets/*`: HTML/CSS/JS frontend assets.
-- `tests/unit/*`: unit tests.
-- `tests/integration/*`: integration + benchmark tests.
+## 3. Dependency Rules
 
-## 3. Numerical model
+Required direction:
 
-### 3.1 Radial Kohn-Sham equation
+- `api/gui/cli -> application -> core + methods`
+- `methods -> core` (for shared models only)
+- `core` must not import API/GUI/HTTP frameworks
+- `application` must not depend on FastAPI or pywebview types
 
-For each angular momentum channel $l$, solve for $u(r)=rR(r)$:
+Practical checks:
 
-$$
--\frac{1}{2}\frac{d^2u}{dr^2} + \left[\frac{l(l+1)}{2r^2} + V_{\mathrm{eff}}(r)\right]u = \epsilon u.
-$$
+- API and GUI adapters call `pydft.application.scf` use-cases
+- Shared request mapping is centralized in `pydft.core.request_mapper`
+- Numerical kernels are isolated in `pydft.methods.atomic`
 
-Finite-difference discretization is used on a uniform radial grid.
+## 4. Layer Responsibilities
 
-### 3.2 Potentials
+### `pydft/core`
 
-- External potential: $V_{\mathrm{ext}}(r)=-Z/r$.
-- Hartree (spherical):
+- Domain dataclasses: `AtomicSystem`, `SCFParameters`, `SCFResult`
+- Preset system construction for shared domain inputs
+- Shared request mapping/defaulting/validation used by all adapters
+- No transport framework imports
 
-$$
-V_H(r) = \frac{Q(r)}{r} + \int_r^{\infty}\frac{q(r')}{r'}dr',
-$$
+### `pydft/application`
 
-with
+- Use-case boundary for running SCF and listing presets
+- No HTTP route types, no GUI bridge types
 
-$$
-q(r)=4\pi r^2 n(r),\qquad Q(r)=\int_0^r q(r')dr'.
-$$
+### `pydft/methods/atomic`
 
-- XC:
-  - LDA: unpolarized Dirac exchange + PZ81 correlation.
-  - LSDA: spin-resolved extension with $n_\uparrow$, $n_\downarrow$ and
-    $\zeta=(n_\uparrow-n_\downarrow)/(n_\uparrow+n_\downarrow)$.
-- HF (current educational module):
-  - exchange-only, no correlation
-  - one occupied $1s$-like orbital per spin channel
-  - intended for up to two-electron atoms (H/He+/He)
+- Actual physics/math implementations:
+  - LDA/LSDA Kohn-Sham SCF
+  - educational HF module
+  - grids, potentials, radial solver, occupations
 
-### 3.3 Energy expression
+### `pydft/api`
 
-$$
-E = \sum_i f_i\epsilon_i - E_H + E_{xc} - \int n(r)v_{xc}(r)\, d^3r,
-$$
+- FastAPI schemas and route handlers only
+- Delegates all business execution to application use-cases
 
-where
+### `pydft/gui`
 
-$$
-E_H = \frac{1}{2}\int n(r)V_H(r)\, d^3r.
-$$
+- pywebview host lifecycle and JS bridge only
+- Bridge supports `direct`, `api`, `auto` execution paths
 
-## 4. SCF strategy
+## 5. Migration Philosophy
 
-- Start from a hydrogenic density guess.
-- Build $V_{\mathrm{eff}}$ from current density.
-- In LSDA mode, build separate $V_{\mathrm{eff},\uparrow}$ and
-  $V_{\mathrm{eff},\downarrow}$ from spin densities.
-- In HF mode, build spin-channel Fock-like radial potentials with same-spin
-  self-interaction cancellation.
-- Solve radial KS equations for each $l$ channel.
-- Fill electrons by ascending eigenvalue:
-  - LDA: $2(2l+1)$ capacity per radial state.
-  - LSDA per spin channel: $(2l+1)$ capacity.
-- Build new density from occupied orbitals.
-- Apply linear density mixing.
-- Stop on max-density-difference tolerance.
+Refactor policy used:
 
-## 5. Execution modes
+1. Baseline first (tests + smoke outputs)
+2. Move code in small, test-guarded slices
+3. Introduce application layer before deleting legacy coupling
+4. Preserve behavior where possible; keep compatibility wrappers when low-risk
+5. Remove mixed concerns after adapters are thin
 
-1. Standalone mode: `pydft-cli run ...`
-2. pywebview mode: `pydft` or `pydft-webview`
-3. Optional HTTP API mode: `pydft-api`
+## 6. Extension Workflow
 
-## 6. Testing strategy
+When adding a new computational method category:
 
-- Unit tests validate isolated components:
-  - radial grid and integration
-  - LDA formulas
-  - occupation filling
-  - Hartree asymptotic behavior
-- Integration tests validate:
-  - FastAPI endpoint execution
-  - CLI JSON execution
-  - benchmark comparisons
+1. Create method module under `src/pydft/methods/<category>/`
+2. Reuse `core.models` contracts or extend them conservatively
+3. Expose new use-case entry in `application/`
+4. Wire API/GUI/CLI adapters through application only
+5. Add unit tests for method kernels + mapping
+6. Add integration tests for CLI/API contracts
+7. Update manuals and examples
 
-## 7. Benchmark references
+## 7. Testing Strategy
 
-Reference values currently used:
+- Unit tests:
+  - core mapping and model assumptions
+  - method kernels (grid/functionals/HF/LSDA/etc.)
+  - application and GUI bridge mode logic
+- Integration tests:
+  - API routes
+  - CLI execution
+  - contract consistency (API vs direct application)
+  - benchmark regression checks
 
-1. Hydrogen exact non-relativistic 1s energy (single-particle benchmark mode):
-   $E=-0.5\ \mathrm{Ha}$.
-2. NIST Atomic DFT LDA helium total energy:
-   $E_{\mathrm{tot}}=-2.834836\ \mathrm{Ha}$.
-3. Helium restricted HF reference:
-   $E_{\mathrm{tot}}\approx-2.86168\ \mathrm{Ha}$.
+Run all tests:
 
-NIST table URLs:
-- https://math.nist.gov/DFTdata/atomdata/node17.html
-- https://math.nist.gov/DFTdata/atomdata/node18.html
+```bash
+pytest
+```
 
-The helium tolerance is intentionally wider in tests because this implementation is educational and uses a simple finite-difference setup.
+## 8. Benchmark References
 
-## 8. License and authorship
+- Hydrogen exact non-relativistic 1s: $E=-0.5\ \mathrm{Ha}$
+- NIST LDA helium total energy: $E_{\mathrm{tot}}=-2.834836\ \mathrm{Ha}$
+- Helium restricted HF reference: $E_{\mathrm{tot}}\approx-2.86168\ \mathrm{Ha}$
+
+## 9. License and Authorship
 
 This software is developed by **Prof. Bin Shan** ([bshan@mail.hust.edu.cn](mailto:bshan@mail.hust.edu.cn)).
 
